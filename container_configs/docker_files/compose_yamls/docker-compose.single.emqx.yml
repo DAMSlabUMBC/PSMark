@@ -14,18 +14,17 @@ services:
     environment:
       EMQX_DEFAULT_LOG_HANDLER: file
       EMQX_LOG__FILE__LEVEL: info
+      EMQX_LOG__LEVEL: debug            
+      EMQX_MQTT__KEEPALIVE: 120s        
+      EMQX_MQTT__IDLE_TIMEOUT: 60s
+      EMQX_MQTT__MAX_PACKET_SIZE: 10MB  
+      EMQX_ALLOW_ANONYMOUS: "true" 
     volumes:
       - ./out/emqx:/opt/emqx/log
     networks:
       benchnet:
         aliases: ["emqx", "mqtt", "broker"]
     ports: ["1883:1883"]
-    environment:
-      EMQX_LOG__LEVEL: debug            
-      EMQX_MQTT__KEEPALIVE: 120s        
-      EMQX_MQTT__IDLE_TIMEOUT: 60s
-      EMQX_MQTT__MAX_PACKET_SIZE: 10MB  
-      EMQX_ALLOW_ANONYMOUS: "true" 
     healthcheck:
       test: ["CMD-SHELL","emqx ping"]
       interval: 15s
