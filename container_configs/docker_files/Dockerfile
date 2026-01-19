@@ -58,6 +58,6 @@ ENV ERL_AFLAGS="-kernel inet_dist_listen_min 15000 inet_dist_listen_max 15010" \
     PATH="/opt/venv/bin:$PATH"
 
 # run the release - use the modified entrypoint that supports both MQTT and DDS
-COPY /entrypoint.sh /entrypoint.sh
+COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
