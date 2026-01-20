@@ -443,6 +443,36 @@ convert_all_metrics() {
   log "CSV export complete ${index_csv}"
 }
 
+# Copy broker logs to results directory if available
+copy_broker_logs() {
+  local results_dir="/app/results"
+  local broker_log_dir="${BROKER_LOG_DIR:-}"
+
+  if [ -z "$broker_log_dir" ] || [ ! -d "$broker_log_dir" ]; then
+    log "No broker log directory configured or found, skipping broker log copy"
+    return 0
+  fi
+
+  # Find the latest results directory
+  local latest_result
+  latest_result=$(ls -dt "$results_dir"/run_* 2>/dev/null | head -1)
+
+  if [ -z "$latest_result" ] || [ ! -d "$latest_result" ]; then
+    log "No results directory found, skipping broker log copy"
+    return 0
+  fi
+
+  local broker_logs_dest="$latest_result/broker_logs"
+  mkdir -p "$broker_logs_dest"
+
+  # Copy all log files from broker log directory
+  if cp -r "$broker_log_dir"/* "$broker_logs_dest/" 2>/dev/null; then
+    log "Copied broker logs to $broker_logs_dest"
+  else
+    log "No broker logs found to copy"
+  fi
+}
+
 on_term() {
   log "SIGTERM received stopping"
   kill -TERM "$APP_PID" 2>/dev/null || true
@@ -608,6 +638,7 @@ main() {
   set -e
   log "ps_bench exited with code ${APP_RC} converting metrics"
   convert_all_metrics
+  copy_broker_logs
   log "Done"
   if [ -n "${NODE_EXPORTER_PID:-}" ]; then
     kill "$NODE_EXPORTER_PID" 2>/dev/null || true

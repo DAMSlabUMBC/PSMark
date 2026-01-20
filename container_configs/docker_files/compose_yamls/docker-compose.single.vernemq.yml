@@ -52,9 +52,11 @@ services:
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
       DEPLOY_DIR: /app/configs/builtin-test-suites/deployments
       SCENARIO: ${SCENARIO:-scalabilitysuite_smart_home_mqttv5_1_node}
+      BROKER_LOG_DIR: /app/broker_logs
     volumes:
       - ./out/runnerMQTT1:/app/out
       - ./results:/app/results
+      - ./out/vernemq:/app/broker_logs:ro
     depends_on:
       vernemq:
         condition: service_healthy

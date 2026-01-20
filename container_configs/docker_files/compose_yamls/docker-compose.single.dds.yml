@@ -23,6 +23,7 @@ services:
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
       DEPLOY_DIR: /app/configs/builtin-test-suites/deployments
       SCENARIO: ${SCENARIO:-scalabilitysuite_smart_home_dds_1_node}
+      BROKER_LOG_DIR: /app/logs
     volumes:
       - ./out/runnerDDS1:/app/out
       - ./out/opendds:/app/logs
