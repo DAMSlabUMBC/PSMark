@@ -5,7 +5,7 @@ networks:
 services:
   emqx:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile.emqx
     image: emqx-with-exporter
     container_name: emqx

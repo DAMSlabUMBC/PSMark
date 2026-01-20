@@ -5,7 +5,7 @@ networks:
 services:
   mosquitto:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile.mosquitto
     image: mosquitto-with-exporter
     container_name: mosquitto

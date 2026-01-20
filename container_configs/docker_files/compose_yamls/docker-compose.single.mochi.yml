@@ -5,7 +5,7 @@ networks:
 services:
   mochi:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile.mochi
     image: mochi-with-exporter
     container_name: mochi

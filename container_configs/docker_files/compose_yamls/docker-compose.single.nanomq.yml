@@ -5,7 +5,7 @@ networks:
 services:
   nanomq:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile.nanomq
     image: nanomq-with-exporter
     container_name: nanomq

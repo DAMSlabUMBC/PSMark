@@ -5,7 +5,7 @@ networks:
 services:
   vernemq:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile.vernemq
     image: vernemq-with-exporter
     container_name: vernemq
