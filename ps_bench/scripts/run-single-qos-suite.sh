@@ -5,7 +5,7 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PS_BENCH_DIR=$(cd -- "${SCRIPT_DIR}/.." && pwd)
-SCEN_ROOT="${PS_BENCH_DIR}/configs/builtin-test-suites/testcases/qos-variation/1-node"
+SCEN_ROOT="${PS_BENCH_DIR}/configs/builtin-test-suites/testcases/high-qos/1-node"
 RESULTS_ROOT="${PS_BENCH_DIR}/results"
 REPEAT_COUNT=${REPEAT_COUNT:-3}
 BROKER_LIST=${BROKER_LIST:-emqx,mosquitto,nanomq,vernemq,mochi}
@@ -82,7 +82,7 @@ for scenario_file in "${SCENARIO_FILES[@]}"; do
   container_dir="/app${rel_dir}"
 
   for broker in "${BROKERS[@]}"; do
-    compose_file="docker-compose.single.${broker}.yml"
+    compose_file="../container_configs/docker_files/compose_yamls/docker-compose.single.${broker}.yml"
     if [ ! -f "${PS_BENCH_DIR}/${compose_file}" ]; then
       echo "Skipping broker ${broker}: missing ${compose_file}" >&2
       continue

@@ -5,11 +5,13 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PS_BENCH_DIR=$(cd -- "${SCRIPT_DIR}/.." && pwd)
-SCALABILITY_ROOT="${PS_BENCH_DIR}/configs/builtin-test-suites/testcases/scalability/1-node"
-QOS_ROOT="${PS_BENCH_DIR}/configs/builtin-test-suites/testcases/qos-variation/1-node"
+SCALABILITY_ROOT="${PS_BENCH_DIR}/configs/builtin-test-suites/testcases/low-qos/1-node"
+QOS_ROOT="${PS_BENCH_DIR}/configs/builtin-test-suites/testcases/high-qos/1-node"
 RESULTS_ROOT="${PS_BENCH_DIR}/results"
 DDS_RESULTS_ROOT="${RESULTS_ROOT}/dds"
-COMPOSE_FILE="docker-compose.single.dds.yml"
+COMPOSE_FILE="../container_configs/docker_files/compose_yamls/docker-compose.single.dds.yml"
+COMPOSE_DIR="${PS_BENCH_DIR}/../container_configs/docker_files/compose_yamls"
+OPENDDS_LOGS_DIR="${COMPOSE_DIR}/out/opendds"
 REPEAT_COUNT=${REPEAT_COUNT:-3}
 
 if ! command -v docker >/dev/null 2>&1; then
@@ -76,6 +78,19 @@ move_new_entries() {
   done
 }
 
+# Preserve OpenDDS logs before they get overwritten by the next run
+preserve_opendds_logs() {
+  local destination_root="$1"
+  local run_tag="$2"
+
+  if [ -d "${OPENDDS_LOGS_DIR}" ] && [ -n "$(ls -A "${OPENDDS_LOGS_DIR}" 2>/dev/null)" ]; then
+    local logs_dest="${destination_root}/${run_tag}/opendds_logs"
+    mkdir -p "${logs_dest}"
+    cp -a "${OPENDDS_LOGS_DIR}/"* "${logs_dest}/" 2>/dev/null || true
+    echo "Preserved OpenDDS logs to ${logs_dest}"
+  fi
+}
+
 current_compose=""
 cleanup() {
   if [ -n "${current_compose}" ]; then
@@ -95,9 +110,9 @@ for scenario_file in "${SCENARIO_FILES[@]}"; do
   rel_dir="${scenario_dir#${PS_BENCH_DIR}}"
   container_dir="/app${rel_dir}"
 
-  suite_dir="scalability"
-  if [[ "${scenario_file}" == *"/qos-variation/"* ]]; then
-    suite_dir="qos-variation"
+  suite_dir="low-qos"
+  if [[ "${scenario_file}" == *"/high-qos/"* ]]; then
+    suite_dir="high-qos"
   fi
 
   if [ ! -f "${PS_BENCH_DIR}/${COMPOSE_FILE}" ]; then
@@ -129,6 +144,7 @@ for scenario_file in "${SCENARIO_FILES[@]}"; do
     current_compose=""
 
     move_new_entries "${RESULTS_ROOT}" "${DDS_RESULTS_ROOT}/${suite_dir}" "${marker}"
+    preserve_opendds_logs "${DDS_RESULTS_ROOT}/${suite_dir}" "${run_tag}"
 
     rm -f "${marker}"
   done
