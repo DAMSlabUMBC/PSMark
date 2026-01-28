@@ -195,7 +195,7 @@ patch_hostnames_in_scenarios() {
 patch_hostnames_in_dds_config() {
 
   FQDN="$(hostname -f 2>/dev/null || true)"
-  sed -i -e "s/REPLACE_LOCAL_HOSTNAME/${FQDN}/g" /app/configs/dds_configs/ps_bench_default_dds_interface.ini || true
+  sed -i -e "s/REPLACE_LOCAL_HOSTNAME/${FQDN}/g" /app/configs/dds_configs/ps_bench_default_dds_interface*.ini || true
  
   log "Hostnames patched in DDS config"
 }
@@ -443,6 +443,36 @@ convert_all_metrics() {
   log "CSV export complete ${index_csv}"
 }
 
+# Copy broker logs to results directory if available
+copy_broker_logs() {
+  local results_dir="/app/results"
+  local broker_log_dir="${BROKER_LOG_DIR:-}"
+
+  if [ -z "$broker_log_dir" ] || [ ! -d "$broker_log_dir" ]; then
+    log "No broker log directory configured or found, skipping broker log copy"
+    return 0
+  fi
+
+  # Find the latest results directory
+  local latest_result
+  latest_result=$(ls -dt "$results_dir"/run_* 2>/dev/null | head -1)
+
+  if [ -z "$latest_result" ] || [ ! -d "$latest_result" ]; then
+    log "No results directory found, skipping broker log copy"
+    return 0
+  fi
+
+  local broker_logs_dest="$latest_result/broker_logs"
+  mkdir -p "$broker_logs_dest"
+
+  # Copy all log files from broker log directory
+  if cp -r "$broker_log_dir"/* "$broker_logs_dest/" 2>/dev/null; then
+    log "Copied broker logs to $broker_logs_dest"
+  else
+    log "No broker logs found to copy"
+  fi
+}
+
 on_term() {
   log "SIGTERM received stopping"
   kill -TERM "$APP_PID" 2>/dev/null || true
@@ -560,15 +590,55 @@ main() {
   while IFS= read -r line; do log "  $line"; done < "$VM_ARGS_PATH"
 
   log "Running: $BIN foreground"
-  "$BIN" foreground &
+
+  # Create a temp file to capture output for monitoring
+  APP_LOG="/tmp/ps_bench_output_$$.log"
+  : > "$APP_LOG"
+
+  # Start the app, writing to log file
+  "$BIN" foreground >> "$APP_LOG" 2>&1 &
   APP_PID="$!"
+  log "Started ps_bench with PID $APP_PID"
+
+  # Tail the log file to show output in docker logs
+  tail -f "$APP_LOG" &
+  TAIL_PID="$!"
+
+  # Background monitor: watch for "Exiting Benchmark" and kill if VM doesn't exit
+  (
+    while kill -0 "$APP_PID" 2>/dev/null; do
+      if grep -q "Exiting Benchmark" "$APP_LOG" 2>/dev/null; then
+        sleep 5  # Give the VM a chance to exit gracefully
+        if kill -0 "$APP_PID" 2>/dev/null; then
+          echo "[entrypoint] Benchmark finished but VM still running - sending SIGTERM"
+          kill -TERM "$APP_PID" 2>/dev/null || true
+          sleep 2
+          if kill -0 "$APP_PID" 2>/dev/null; then
+            echo "[entrypoint] VM still running - sending SIGKILL"
+            kill -KILL "$APP_PID" 2>/dev/null || true
+          fi
+        fi
+        break
+      fi
+      sleep 2
+    done
+  ) &
+  MONITOR_PID="$!"
+
   trap on_term TERM
   trap on_int INT
   wait "$APP_PID"
   APP_RC="$?"
+
+  # Clean up monitor and tail
+  kill "$MONITOR_PID" 2>/dev/null || true
+  kill "$TAIL_PID" 2>/dev/null || true
+  rm -f "$APP_LOG"
+
   set -e
   log "ps_bench exited with code ${APP_RC} converting metrics"
   convert_all_metrics
+  copy_broker_logs
   log "Done"
   if [ -n "${NODE_EXPORTER_PID:-}" ]; then
     kill "$NODE_EXPORTER_PID" 2>/dev/null || true

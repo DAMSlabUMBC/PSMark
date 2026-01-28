@@ -4,10 +4,12 @@
 SCRIPT_PATH=$(realpath "$0")
 SCRIPT_DIR=$(dirname $SCRIPT_PATH)
 DOCKERFILE_DIR="${SCRIPT_DIR}/../container_configs/docker_files"
+CONFIG_DIR="${SCRIPT_DIR}/../container_configs"
 SRC_DIR="${SCRIPT_DIR}/../ps_bench"
 
 # Build the containers
 cd $SRC_DIR
+cp $CONFIG_DIR/entrypoint.sh $SRC_DIR
 
 echo "==== Building EMQX Broker ===="
 docker build -t emqx-with-exporter -f $DOCKERFILE_DIR/Dockerfile.emqx .
