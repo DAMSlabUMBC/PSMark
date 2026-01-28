@@ -4,7 +4,7 @@ networks:
 
 services:
   runnerDDS1:
-    image: ps_bench-runner:latest
+    image: psmark-runner:latest
     container_name: runnerDDS1
     hostname: runnerDDS1
     domainname: benchnet

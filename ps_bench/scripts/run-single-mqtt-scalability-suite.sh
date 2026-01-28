@@ -3,14 +3,18 @@ set -euo pipefail
 
 # Run all single-node scalability scenarios against each MQTT broker compose stack.
 
+RUN_DIR="`pwd`"
 SCRIPT_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PS_BENCH_DIR=$(cd -- "${SCRIPT_DIR}/.." && pwd)
+COMPOSE_DIR=$(cd -- "$PS_BENCH_DIR/../container_configs/docker_files/compose_yamls" && pwd)
+CONTAINER_CONFIG_DIR=$(cd -- "$PS_BENCH_DIR/../container_configs" && pwd)
 SCEN_ROOT="${PS_BENCH_DIR}/configs/builtin-test-suites/testcases/low-qos/1-node"
-RESULTS_ROOT="${PS_BENCH_DIR}/results"
+RESULTS_ROOT="${RUN_DIR}/results"
 REPEAT_COUNT=${REPEAT_COUNT:-3}
 BROKER_LIST=${BROKER_LIST:-emqx,mosquitto,nanomq,vernemq,mochi}
 IFS=',' read -r -a BROKERS <<<"${BROKER_LIST}"
 SCEN_FILTER=${SCEN_FILTER:-}
+
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker CLI is required but was not found" >&2
@@ -82,11 +86,35 @@ for scenario_file in "${SCENARIO_FILES[@]}"; do
   container_dir="/app${rel_dir}"
 
   for broker in "${BROKERS[@]}"; do
-    compose_file="../container_configs/docker_files/compose_yamls/docker-compose.single.${broker}.yml"
-    if [ ! -f "${PS_BENCH_DIR}/${compose_file}" ]; then
+    compose_file="$COMPOSE_DIR/docker-compose.single.${broker}.yml"
+    if [ ! -f "${compose_file}" ]; then
       echo "Skipping broker ${broker}: missing ${compose_file}" >&2
       continue
     fi
+    
+    cp $compose_file $RUN_DIR
+    run_compose_file="$RUN_DIR/$(basename $compose_file)"
+    
+    # If broker is mosquitto, we need the config in place
+    if [[ "$broker" == "mosquitto" ]]; then
+        cp $CONTAINER_CONFIG_DIR/mosquitto.conf $RUN_DIR
+    fi
+    
+    # TODO: Need to change this to not rely on string manipulation
+    # Make log directories
+    subdir_name=${broker}
+    if [[ "$subdir_name" == "dds" ]]; then
+        subdir_name="opendds"
+    fi
+
+    # Make log dirs
+    mkdir -p "${RUN_DIR}/out/${subdir_name}"
+    chmod 777 "${RUN_DIR}/out/${subdir_name}"
+
+    # Make results dirs
+    mkdir -p "${RESULTS_ROOT}/${subdir_name}"
+    chmod 777 "${RESULTS_ROOT}/${subdir_name}"
+    
 
     for repeat in $(seq 1 "${REPEAT_COUNT}"); do
       marker=$(mktemp)
@@ -96,24 +124,28 @@ for scenario_file in "${SCENARIO_FILES[@]}"; do
       echo
       echo "=== ${broker}: ${scenario_name} (run ${repeat}/${REPEAT_COUNT}) ==="
 
-      current_compose="${compose_file}"
-      if ! (cd "${PS_BENCH_DIR}" && \
-            SCEN_DIR="${container_dir}" \
+      current_compose="${run_compose_file}"
+      if ! (SCEN_DIR="${container_dir}" \
             SCENARIO="${scenario_name}" \
             RUN_TAG="${run_tag}" \
-            docker compose -f "${compose_file}" up --build --force-recreate --abort-on-container-exit)
+            docker compose -f "${run_compose_file}" up --force-recreate --abort-on-container-exit)
       then
         echo "Run failed for broker ${broker} and scenario ${scenario_name}" >&2
         rm -f "${marker}"
         exit 1
       fi
 
-      (cd "${PS_BENCH_DIR}" && docker compose -f "${compose_file}" down --remove-orphans >/dev/null)
+      docker compose -f "${run_compose_file}" down --remove-orphans >/dev/null
       current_compose=""
 
-      move_new_entries "${RESULTS_ROOT}" "${RESULTS_ROOT}/${broker}" "${marker}"
+      move_new_entries "${RESULTS_ROOT}" "${RESULTS_ROOT}/${subdir_name}" "${marker}"
 
       rm -f "${marker}"
     done
+    
+    # Clean up after
+    rm -rf "${RUN_DIR}/out"
+    rm $run_compose_file
+    
   done
 done

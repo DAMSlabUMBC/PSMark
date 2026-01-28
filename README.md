@@ -22,7 +22,7 @@ This repo contains the Erlang application, default protocol interfaces, example 
 ## Quick Start (5-Node)
 - Prereqs: Docker + Docker Compose
 - Build runner image (from `ps_bench/`):
-  - `cd ps_bench && docker build -t ps_bench-runner:latest -f Dockerfile .`
+  - `cd ps_bench && docker build -t psmark-runner:latest -f Dockerfile .`
 - MQTT (EMQX broker) 5-node:
   - `docker compose -f ps_bench/docker-compose.mqtt.emqx.yml up --build`
 - MQTT (Mosquitto broker) 5-node:
@@ -32,7 +32,7 @@ This repo contains the Erlang application, default protocol interfaces, example 
 
 ### Tear Down
 - Stop and remove containers: append `-d` to run detached, then `docker compose -f <compose-file> down`
-- Remove images if needed: `docker rmi ps_bench-runner:latest emqx-with-exporter mosquitto-with-exporter`
+- Remove images if needed: `docker rmi psmark-runner:latest emqx-with-exporter mosquitto-with-exporter`
 
 ### Notes
 - Compose files mount `./results` and per-runner `./out/<runner>` for artifacts.

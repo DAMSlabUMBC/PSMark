@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # First setup the environment
-THIS_SCRIPT=$(basename "$0")
-SCRIPT_PATH=$(realpath $THIS_SCRIPT)
+SCRIPT_PATH=$(realpath "$0")
 SCRIPT_DIR=$(dirname $SCRIPT_PATH)
 DOCKERFILE_DIR="${SCRIPT_DIR}/../container_configs/docker_files"
 SRC_DIR="${SCRIPT_DIR}/../ps_bench"

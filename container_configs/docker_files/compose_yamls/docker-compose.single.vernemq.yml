@@ -31,7 +31,7 @@ services:
       start_period: 2s
 
   runnerMQTT1:
-    image: ps_bench-runner:latest
+    image: psmark-runner:latest
     container_name: runnerMQTT1
     hostname: runnerMQTT1
     domainname: benchnet

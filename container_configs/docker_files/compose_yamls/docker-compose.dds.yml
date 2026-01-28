@@ -4,7 +4,7 @@ networks:
 
 services:
   runnerDDS1:
-    image: ps_bench-runner:latest
+    image: psmark-runner:latest
     container_name: runnerDDS1
     hostname: runnerDDS1
     domainname: benchnet
@@ -30,7 +30,7 @@ services:
       - ./results:/app/results
 
   runnerDDS2:
-    image: ps_bench-runner:latest
+    image: psmark-runner:latest
     container_name: runnerDDS2
     hostname: runnerDDS2
     domainname: benchnet
@@ -56,7 +56,7 @@ services:
       - ./results:/app/results
 
   runnerDDS3:
-    image: ps_bench-runner:latest
+    image: psmark-runner:latest
     container_name: runnerDDS3
     hostname: runnerDDS3
     domainname: benchnet
@@ -82,7 +82,7 @@ services:
       - ./results:/app/results
 
   runnerDDS4:
-    image: ps_bench-runner:latest
+    image: psmark-runner:latest
     container_name: runnerDDS4
     hostname: runnerDDS4
     domainname: benchnet
@@ -108,7 +108,7 @@ services:
       - ./results:/app/results
 
   runnerDDS5:
-    image: ps_bench-runner:latest
+    image: psmark-runner:latest
     container_name: runnerDDS5
     hostname: runnerDDS5
     domainname: benchnet

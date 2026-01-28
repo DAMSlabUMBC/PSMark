@@ -25,7 +25,7 @@ services:
       start_period: 2s
 
   runnerMQTT1:
-    image: ps_bench-runner:latest
+    image: psmark-runner:latest
     container_name: runnerMQTT1
     hostname: runnerMQTT1
     domainname: benchnet
@@ -54,7 +54,7 @@ services:
         condition: service_healthy
 
   runnerMQTT2:
-    image: ps_bench-runner:latest
+    image: psmark-runner:latest
     container_name: runnerMQTT2
     hostname: runnerMQTT2
     domainname: benchnet
@@ -83,7 +83,7 @@ services:
         condition: service_healthy
 
   runnerMQTT3:
-    image: ps_bench-runner:latest
+    image: psmark-runner:latest
     container_name: runnerMQTT3
     hostname: runnerMQTT3
     domainname: benchnet
@@ -112,7 +112,7 @@ services:
         condition: service_healthy
 
   runnerMQTT4:
-    image: ps_bench-runner:latest
+    image: psmark-runner:latest
     container_name: runnerMQTT4
     hostname: runnerMQTT4
     domainname: benchnet
@@ -141,7 +141,7 @@ services:
         condition: service_healthy
 
   runnerMQTT5:
-    image: ps_bench-runner:latest
+    image: psmark-runner:latest
     container_name: runnerMQTT5
     hostname: runnerMQTT5
     domainname: benchnet
