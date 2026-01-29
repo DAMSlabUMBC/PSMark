@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run all single-node DDS scenarios (scalability + QoS) using the DDS compose stack.
+# Run all 5-node DDS scenarios (scalability + QoS) using the DDS compose stack.
 
 RUN_DIR="`pwd`"
 SCRIPT_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PS_BENCH_DIR=$(cd -- "${SCRIPT_DIR}/.." && pwd)
-SCALABILITY_ROOT="${PS_BENCH_DIR}/configs/builtin-test-suites/testcases/low-qos/1-node"
-QOS_ROOT="${PS_BENCH_DIR}/configs/builtin-test-suites/testcases/high-qos/1-node"
+SCALABILITY_ROOT="${PS_BENCH_DIR}/configs/builtin-test-suites/testcases/low-qos/5-node"
+QOS_ROOT="${PS_BENCH_DIR}/configs/builtin-test-suites/testcases/high-qos/5-node"
 COMPOSE_DIR=$(cd -- "$PS_BENCH_DIR/../container_configs/docker_files/compose_yamls" && pwd)
 CONTAINER_CONFIG_DIR=$(cd -- "$PS_BENCH_DIR/../container_configs" && pwd)
 RESULTS_ROOT="${RUN_DIR}/results"
 DDS_RESULTS_ROOT="${RESULTS_ROOT}/dds"
-COMPOSE_FILE="${COMPOSE_DIR}/docker-compose.single.dds.yml"
+COMPOSE_FILE="${COMPOSE_DIR}/docker-compose.dds.yml"
 OPENDDS_LOGS_DIR="${RUN_DIR}/out/opendds"
 REPEAT_COUNT=${REPEAT_COUNT:-3}
 
@@ -28,8 +28,8 @@ fi
 
 mkdir -p "${RESULTS_ROOT}" "${DDS_RESULTS_ROOT}" 2>/dev/null || true
 
-mapfile -t SCALABILITY_SCENARIOS < <(find "${SCALABILITY_ROOT}" -type f -name 'scalabilitysuite_*_dds*_1_node.scenario' 2>/dev/null | sort || true)
-mapfile -t QOS_SCENARIOS < <(find "${QOS_ROOT}" -type f -name 'qossuite_*_dds*_1_node.scenario' 2>/dev/null | sort || true)
+mapfile -t SCALABILITY_SCENARIOS < <(find "${SCALABILITY_ROOT}" -type f -name 'scalabilitysuite_*_dds*.scenario' 2>/dev/null | sort || true)
+mapfile -t QOS_SCENARIOS < <(find "${QOS_ROOT}" -type f -name 'qossuite_*_dds*.scenario' 2>/dev/null | sort || true)
 
 SCENARIO_FILES=()
 if [ ${#SCALABILITY_SCENARIOS[@]} -gt 0 ]; then
@@ -40,7 +40,7 @@ if [ ${#QOS_SCENARIOS[@]} -gt 0 ]; then
 fi
 
 if [ ${#SCENARIO_FILES[@]} -eq 0 ]; then
-  echo "No single-node DDS scenarios found under ${SCALABILITY_ROOT} or ${QOS_ROOT}" >&2
+  echo "No 5-node DDS scenarios found under ${SCALABILITY_ROOT} or ${QOS_ROOT}" >&2
   exit 1
 fi
 

@@ -48,10 +48,11 @@ services:
       SCEN_DIR: /app/configs/builtin-test-suites/testcases
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
       DEPLOY_DIR: /app/configs/builtin-test-suites/deployments
-      SCENARIO: scalabilitysuite_smart_home_mqttv5
+      SCENARIO: ${SCENARIO:-scalabilitysuite_smart_home_mqttv5}
     volumes:
       - ./out/runnerMQTT1:/app/out
       - ./results:/app/results
+      - ./out/emqx:/app/broker_logs:ro
     depends_on:
       emqx:
         condition: service_healthy
@@ -77,7 +78,7 @@ services:
       SCEN_DIR: /app/configs/builtin-test-suites/testcases
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
       DEPLOY_DIR: /app/configs/builtin-test-suites/deployments
-      SCENARIO: scalabilitysuite_smart_home_mqttv5
+      SCENARIO: ${SCENARIO:-scalabilitysuite_smart_home_mqttv5}
     volumes:
       - ./out/runnerMQTT2:/app/out
       - ./results:/app/results
@@ -106,7 +107,7 @@ services:
       SCEN_DIR: /app/configs/builtin-test-suites/testcases
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
       DEPLOY_DIR: /app/configs/builtin-test-suites/deployments
-      SCENARIO: scalabilitysuite_smart_home_mqttv5
+      SCENARIO: ${SCENARIO:-scalabilitysuite_smart_home_mqttv5}
     volumes:
       - ./out/runnerMQTT3:/app/out
       - ./results:/app/results
@@ -135,7 +136,7 @@ services:
       SCEN_DIR: /app/configs/builtin-test-suites/testcases
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
       DEPLOY_DIR: /app/configs/builtin-test-suites/deployments
-      SCENARIO: scalabilitysuite_smart_home_mqttv5
+      SCENARIO: ${SCENARIO:-scalabilitysuite_smart_home_mqttv5}
     volumes:
       - ./out/runnerMQTT4:/app/out
       - ./results:/app/results
@@ -164,7 +165,7 @@ services:
       SCEN_DIR: /app/configs/builtin-test-suites/testcases
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
       DEPLOY_DIR: /app/configs/builtin-test-suites/deployments
-      SCENARIO: scalabilitysuite_smart_home_mqttv5
+      SCENARIO: ${SCENARIO:-scalabilitysuite_smart_home_mqttv5}
     volumes:
       - ./out/runnerMQTT5:/app/out
       - ./results:/app/results

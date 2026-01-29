@@ -23,7 +23,7 @@ services:
       SCEN_DIR: /app/configs/builtin-test-suites/testcases
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
       DEPLOY_DIR: /app/configs/builtin-test-suites/deployments
-      SCENARIO: scalabilitysuite_smart_home_dds
+      SCENARIO: ${SCENARIO:-scalabilitysuite_smart_home_dds}
     volumes:
       - ./out/runnerDDS1:/app/out
       - ./out/opendds:/app/logs
@@ -49,7 +49,7 @@ services:
       SCEN_DIR: /app/configs/builtin-test-suites/testcases
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
       DEPLOY_DIR: /app/configs/builtin-test-suites/deployments
-      SCENARIO: scalabilitysuite_smart_home_dds
+      SCENARIO: ${SCENARIO:-scalabilitysuite_smart_home_dds}
     volumes:
       - ./out/runnerDDS2:/app/out
       - ./out/opendds:/app/logs
@@ -75,7 +75,7 @@ services:
       SCEN_DIR: /app/configs/builtin-test-suites/testcases
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
       DEPLOY_DIR: /app/configs/builtin-test-suites/deployments
-      SCENARIO: scalabilitysuite_smart_home_dds
+      SCENARIO: ${SCENARIO:-scalabilitysuite_smart_home_dds}
     volumes:
       - ./out/runnerDDS3:/app/out
       - ./out/opendds:/app/logs
@@ -101,7 +101,7 @@ services:
       SCEN_DIR: /app/configs/builtin-test-suites/testcases
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
       DEPLOY_DIR: /app/configs/builtin-test-suites/deployments
-      SCENARIO: scalabilitysuite_smart_home_dds
+      SCENARIO: ${SCENARIO:-scalabilitysuite_smart_home_dds}
     volumes:
       - ./out/runnerDDS4:/app/out
       - ./out/opendds:/app/logs
@@ -127,7 +127,7 @@ services:
       SCEN_DIR: /app/configs/builtin-test-suites/testcases
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
       DEPLOY_DIR: /app/configs/builtin-test-suites/deployments
-      SCENARIO: scalabilitysuite_smart_home_dds
+      SCENARIO: ${SCENARIO:-scalabilitysuite_smart_home_dds}
     volumes:
       - ./out/runnerDDS5:/app/out
       - ./out/opendds:/app/logs

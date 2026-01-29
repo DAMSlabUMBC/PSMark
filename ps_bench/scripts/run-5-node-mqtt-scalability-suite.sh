@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run all single-node scalability scenarios against each MQTT broker compose stack.
+# Run all 5-node scalability scenarios against each MQTT broker compose stack.
 
 RUN_DIR="`pwd`"
 SCRIPT_DIR=$(cd -- "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PS_BENCH_DIR=$(cd -- "${SCRIPT_DIR}/.." && pwd)
 COMPOSE_DIR=$(cd -- "$PS_BENCH_DIR/../container_configs/docker_files/compose_yamls" && pwd)
 CONTAINER_CONFIG_DIR=$(cd -- "$PS_BENCH_DIR/../container_configs" && pwd)
-SCEN_ROOT="${PS_BENCH_DIR}/configs/builtin-test-suites/testcases/low-qos/1-node"
+SCEN_ROOT="${PS_BENCH_DIR}/configs/builtin-test-suites/testcases/low-qos/5-node"
 RESULTS_ROOT="${RUN_DIR}/results"
 REPEAT_COUNT=${REPEAT_COUNT:-3}
 BROKER_LIST=${BROKER_LIST:-emqx,mosquitto,nanomq,vernemq,mochi}
@@ -28,9 +28,9 @@ fi
 
 mkdir -p "${RESULTS_ROOT}" 2>/dev/null || true
 
-mapfile -t SCENARIO_FILES < <(find "${SCEN_ROOT}" -type f -name 'scalabilitysuite_*_mqttv5*_1_node.scenario' | sort)
+mapfile -t SCENARIO_FILES < <(find "${SCEN_ROOT}" -type f -name 'scalabilitysuite_*_mqttv5*.scenario' | sort)
 if [ ${#SCENARIO_FILES[@]} -eq 0 ]; then
-  echo "No single-node MQTT scalability scenarios found under ${SCEN_ROOT}" >&2
+  echo "No 5-node MQTT scalability scenarios found under ${SCEN_ROOT}" >&2
   exit 1
 fi
 
@@ -48,6 +48,7 @@ move_new_entries() {
   local search_root="$1"
   local destination_root="$2"
   local marker="$3"
+  local log_dir="$4"
 
   [ -d "${search_root}" ] || return 0
   mkdir -p "${destination_root}"
@@ -63,6 +64,8 @@ move_new_entries() {
       continue
     fi
     mv "${candidate}" "${destination_root}/${base}"
+    mkdir -p "${destination_root}/${base}/broker_logs"
+    cp -r $log_dir "${destination_root}/${base}/broker_logs" 2>/dev/null || true
   done
 }
 
@@ -86,7 +89,7 @@ for scenario_file in "${SCENARIO_FILES[@]}"; do
   container_dir="/app${rel_dir}"
 
   for broker in "${BROKERS[@]}"; do
-    compose_file="$COMPOSE_DIR/docker-compose.single.${broker}.yml"
+    compose_file="$COMPOSE_DIR/docker-compose.mqtt.${broker}.yml"
     if [ ! -f "${compose_file}" ]; then
       echo "Skipping broker ${broker}: missing ${compose_file}" >&2
       continue
@@ -138,7 +141,7 @@ for scenario_file in "${SCENARIO_FILES[@]}"; do
       docker compose -f "${run_compose_file}" down --remove-orphans >/dev/null
       current_compose=""
 
-      move_new_entries "${RESULTS_ROOT}" "${RESULTS_ROOT}/${subdir_name}" "${marker}"
+      move_new_entries "${RESULTS_ROOT}" "${RESULTS_ROOT}/${subdir_name}" "${marker}" "${RUN_DIR}/out/${subdir_name}"
 
       rm -f "${marker}"
     done

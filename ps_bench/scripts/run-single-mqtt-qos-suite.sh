@@ -75,7 +75,7 @@ cleanup() {
 trap cleanup EXIT
 
 for scenario_file in "${SCENARIO_FILES[@]}"; do
-  scenario_name=$(basename "${scenario_file}" .scenario)
+  scenario_name=$(sed -n "s/{name, \(.*\)},/\1/p" $scenario_file | awk '{$1=$1;print}')
 
   if [ -n "${SCEN_FILTER}" ] && [[ "${scenario_name}" != *"${SCEN_FILTER}"* ]]; then
     continue
