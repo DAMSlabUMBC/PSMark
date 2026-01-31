@@ -41,12 +41,35 @@ This repo contains the Erlang application, default protocol interfaces, example 
 
 Single-node compose stacks live under `ps_bench/docker-compose.single.*.yml`; see the automation script below to run them in bulk.
 
+## Supported MQTT Brokers
+
+| Broker | Version | Compose File |
+|--------|---------|--------------|
+| EMQX | 5.x | `docker-compose.single.emqx.yml` |
+| Mosquitto | 2.x | `docker-compose.single.mosquitto.yml` |
+| NanoMQ | 0.x | `docker-compose.single.nanomq.yml` |
+| VerneMQ | 1.x | `docker-compose.single.vernemq.yml` |
+| Mochi | 2.x | `docker-compose.single.mochi.yml` |
+
+For DDS (brokerless): Use `docker-compose.single.dds.yml`
+
 ## Automated Single-Node Runs
 - MQTT (scalability): `./ps_bench/scripts/run-single-scalability-suite.sh` iterates the single-node scalability scenarios across `docker-compose.single.{emqx|mosquitto|nanomq|vernemq|mochi}.yml`, repeating each scenario three times by default (override with `REPEAT_COUNT=<n>`). Results are regrouped into broker folders under `ps_bench/results/<broker>/…`.
 - MQTT (QoS variation): `./ps_bench/scripts/run-single-qos-suite.sh` does the same for the QoS variation scenarios with the same knobs (`BROKER_LIST`, `SCEN_FILTER`, `REPEAT_COUNT`).
 - DDS: `./ps_bench/scripts/run-single-dds-suite.sh` walks the DDS scenarios from both suites with `docker-compose.single.dds.yml`, repeating each scenario three times by default (override with `REPEAT_COUNT=<n>`). Results land under `ps_bench/results/dds/<suite>/…`, keeping MQTT and DDS runs separate.
 - All scripts honour `RUN_TAG` (default is scenario-based) and rely on the compose files’ overridable `SCEN_DIR`/`SCENARIO` environment variables if you need to point at custom configs.
 - Each run blocks until the compose stack exits; interrupting a script tears down the active stack automatically.
+
+## Built-in Workloads
+
+| Paper Name | Config Name | Devices | Description |
+|------------|-------------|---------|-------------|
+| PSMark-C | `smart_city` | 541 | Smart city sensors (meters, traffic, environment) |
+| PSMark-F | `smart_factory` | 40 | Factory automation (machines, robots) |
+| PSMark-HC | `smart_healthcare` | 24 | Healthcare monitoring (health sensors) |
+| PSMark-HM | `smart_home` | 20 | Smart home IoT (cameras, plugs, sensors) |
+
+Scaling variants (2x, 10x) multiply device counts proportionally.
 
 ## Configuration Model (files under `ps_bench/configs`)
 - Devices (`*.device`): defines device type payload size, frequency, disconnect/reconnect behavior.
@@ -62,6 +85,68 @@ Single-node compose stacks live under `ps_bench/docker-compose.single.*.yml`; se
   - `{output_dir, "results"}` (base dir)
   - Optional `{hw_stats_poll_period_ms, 1000}` to enable node_exporter polling
   - `{metric_plugins, [{PluginModule, erlang}, ...]}`
+
+### Configuration Examples
+
+**Device Definition (`*.device`)** - Defines a sensor/device type with publication behavior:
+```erlang
+[
+    {type, temperature_sensor},           % Unique device type identifier
+    {publication_frequency_ms, 1000},     % Publish every 1000ms (1 msg/s)
+    {payload_bytes_mean, 94},             % Average payload size in bytes
+    {payload_bytes_variance, 5},          % Payload size variance
+    {disconnect_check_period_ms, 1000},   % Check for disconnect every 1s
+    {disconnect_chance_pct, 0.05},        % 5% chance to disconnect per check
+    {reconnect_check_period_ms, 1000},    % Check for reconnect every 1s
+    {reconnect_chance_pct, 0.8}           % 80% chance to reconnect per check
+].
+```
+
+**Deployment Definition (`*.deployment`)** - Maps device types to counts per node:
+```erlang
+[
+    {name, my_deployment_1_node},
+    {nodes, [
+        {runner1, [
+            {devices, [
+                {temperature_sensor, 10},   % 10 temperature sensors
+                {humidity_sensor, 5}        % 5 humidity sensors
+            ]}
+        ]}
+    ]}
+].
+```
+
+**Scenario Definition (`*.scenario`)** - Combines protocol, deployment, and metrics:
+```erlang
+[
+    {name, my_benchmark_scenario},
+    {duration, {10, minutes}},
+    {protocol, mqttv5},                    % mqttv5, mqttv311, or dds
+    {deployment_name, my_deployment_1_node},
+    {hosts, [
+        {runner1, [
+            {hostname, 'runner1@localhost'},
+            {rng_seed, {1, 2, 3}}
+        ]}
+    ]},
+    {protocol_config, [
+        {client_interface_module, ps_bench_default_mqtt_interface},
+        {broker, "broker"},
+        {port, 1883},
+        {qos, [{default_qos, 0}]}
+    ]},
+    {metric_config, [
+        {output_dir, "results"},
+        {hw_stats_poll_period_ms, 1000},
+        {metric_plugins, [
+            {ps_bench_throughput_calc_plugin, erlang},
+            {ps_bench_latency_calc_plugin, erlang},
+            {ps_bench_dropped_message_calc_plugin, erlang}
+        ]}
+    ]}
+].
+```
 
 ## Adding Metric Plugins (Erlang)
 - Implement a module with the following callbacks:
@@ -93,9 +178,37 @@ Single-node compose stacks live under `ps_bench/docker-compose.single.*.yml`; se
 - Run shell with config: `rebar3 shell --apps mnesia,ps_bench` (uses `configs/ps_bench.config`)
 - Release build: `rebar3 release`
 
+## Kubernetes Deployment (Experimental)
+
+Kubernetes manifests for broker deployments are in `container_configs/kubernetes_yaml/`.
+
+```bash
+# Deploy a broker (e.g., EMQX)
+kubectl apply -f container_configs/kubernetes_yaml/emqx-deployment.yaml
+
+# Deploy headless service for runners
+kubectl apply -f container_configs/kubernetes_yaml/runner-service.yaml
+```
+
+**Note:** Runner pod manifests are not yet provided. Use the Docker Compose multi-node setup for distributed benchmarks.
+
 ## Results
 - Metric CSVs are written by plugins to the run directory under `metric_config.output_dir` with a run-specific subfolder.
 - If HW stats polling is enabled, `local_hw_stats.csv` is always written; when primary, `broker_hw_stats.csv` is also written.
+
+### Output CSV Files
+
+Each benchmark run produces the following CSV files:
+
+| File | Source | Description |
+|------|--------|-------------|
+| `throughput.csv` | Throughput plugin | Message throughput (AverageThroughput, Variance, Min/Max/Median/P90/P95/P99) |
+| `latency.csv` | Latency plugin | End-to-end latency (AverageLatencyMs, VarianceMs, Min/Max/Median/P90/P95/P99) |
+| `dropped_messages.csv` | Dropped message plugin | Message loss (TotalSent, TotalRecv, TotalDropped, DropRate) |
+| `local_hw_stats.csv` | HW stats reader | Runner CPU/memory usage |
+| `broker_hw_stats.csv` | HW stats reader | Broker CPU/memory usage |
+
+Enable HW stats by setting `{hw_stats_poll_period_ms, 1000}` in `metric_config`.
 
 ## Environment Overrides
 - Edit `ps_bench/.env` to adjust common variables like `SCENARIO`, `RUN_TAG`, `ADD_NODE_TO_SUFFIX`, and `RELEASE_COOKIE`.
