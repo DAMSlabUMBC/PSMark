@@ -148,6 +148,18 @@ Scaling variants (2x, 10x) multiply device counts proportionally.
 ].
 ```
 
+**Application Configuration File (`*.deployment`)** - Sets the base configuration and links to the definition files:
+```erlang
+[{psmark,
+    [{node_name, runner1},
+    {device_definitions_directory, "configs/builtin-test-suites/devices"},
+    {deployment_definitions_directory, "configs/builtin-test-suites/deployments"},
+    {scenario_definitions_directory, "configs/builtin-test-suites/testcases"},
+    {selected_scenario, scalabilitysuite_smart_home_mqttv5_1_node}
+  ]}
+].
+```
+
 ## Adding Metric Plugins (Erlang)
 - Implement a module with the following callbacks:
   - `init(OutDir) -> ok` called once per run with the timestamped run directory
