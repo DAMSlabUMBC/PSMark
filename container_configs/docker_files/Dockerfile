@@ -43,7 +43,7 @@ RUN rm -rf _build deps && mkdir -p /app/out
 RUN rebar3 release
 
 # make configs/out visible to the release
-RUN set -eux; rel="/app/_build/default/rel/ps_bench"; \
+RUN set -eux; rel="/app/_build/default/rel/psmark"; \
     ln -s /app/configs "$rel/configs" || true; \
     ln -s /app/out     "$rel/out"     || true; \
     ln -s /app/results "$rel/results" || true
@@ -53,7 +53,7 @@ EXPOSE 4369 15000-15010
 
 # clean ERL flags, set cookie + metrics dir default
 ENV ERL_AFLAGS="-kernel inet_dist_listen_min 15000 inet_dist_listen_max 15010" \
-    RELEASE_COOKIE="ps_bench_cookie" \
+    RELEASE_COOKIE="psmark_cookie" \
     METRICS_DIR="/app/out" \
     PATH="/opt/venv/bin:$PATH"
 

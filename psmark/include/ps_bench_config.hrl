@@ -7,7 +7,7 @@
 -define(ENV_REQ_KEY_LIST, [?ENV_NODE_NAME, ?ENV_DEVICE_DEF_DIR, ?ENV_DEPLOYMENT_DEF_DIR, ?ENV_SCENARIO_DEF_DIR, ?ENV_SELECTED_SCENARIO]).
 
 % Cookie for connections
--define(PS_BENCH_COOKIE, ps_bench_cookie).
+-define(PS_BENCH_COOKIE, psmark_cookie).
 
 % Wildcard string for device file searching
 -define(DEVICE_FILE_EXT, "**/*.device").

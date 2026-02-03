@@ -12,23 +12,23 @@ This repo contains the Erlang application, default protocol interfaces, example 
 - Optional HW stats polling (Prometheus node_exporter)
 
 ## Repository Layout
-- `ps_bench/src/core`: configuration, lifecycle, node management, storage
-- `ps_bench/src/protocol_clients`: adapters and default protocol implementations
-- `ps_bench/src/metrics`: metric manager, HW stats reader, plugins
-- `ps_bench/configs`: templates, built-in examples, and initial test configs
-- `ps_bench/Dockerfile` + `docker-compose.*.yml`: local/dev orchestration
+- `psmark/src/core`: configuration, lifecycle, node management, storage
+- `psmark/src/protocol_clients`: adapters and default protocol implementations
+- `psmark/src/metrics`: metric manager, HW stats reader, plugins
+- `psmark/configs`: templates, built-in examples, and initial test configs
+- `psmark/Dockerfile` + `docker-compose.*.yml`: local/dev orchestration
 - `docs/`: how-tos for plugins and interfaces
 
 ## Quick Start (5-Node)
 - Prereqs: Docker + Docker Compose
-- Build runner image (from `ps_bench/`):
-  - `cd ps_bench && docker build -t psmark-runner:latest -f Dockerfile .`
+- Build runner image (from `psmark/`):
+  - `cd psmark && docker build -t psmark-runner:latest -f Dockerfile .`
 - MQTT (EMQX broker) 5-node:
-  - `docker compose -f ps_bench/docker-compose.mqtt.emqx.yml up --build`
+  - `docker compose -f psmark/docker-compose.mqtt.emqx.yml up --build`
 - MQTT (Mosquitto broker) 5-node:
-  - `docker compose -f ps_bench/docker-compose.mqtt.mosquitto.yml up --build`
+  - `docker compose -f psmark/docker-compose.mqtt.mosquitto.yml up --build`
 - DDS (no broker) 5-node:
-  - `docker compose -f ps_bench/docker-compose.dds.yml up --build`
+  - `docker compose -f psmark/docker-compose.dds.yml up --build`
 
 ### Tear Down
 - Stop and remove containers: append `-d` to run detached, then `docker compose -f <compose-file> down`
@@ -36,10 +36,10 @@ This repo contains the Erlang application, default protocol interfaces, example 
 
 ### Notes
 - Compose files mount `./results` and per-runner `./out/<runner>` for artifacts.
-- Default scenarios used by the compose files are the built-in scalability test suites. Override with `SCENARIO=<name>` or edit `ps_bench/.env`.
+- Default scenarios used by the compose files are the built-in scalability test suites. Override with `SCENARIO=<name>` or edit `psmark/.env`.
 - Distribution uses long names (`-name`) and a bridge network `benchnet` compose handles hostname wiring.
 
-Single-node compose stacks live under `ps_bench/docker-compose.single.*.yml`; see the automation script below to run them in bulk.
+Single-node compose stacks live under `psmark/docker-compose.single.*.yml`; see the automation script below to run them in bulk.
 
 ## Supported MQTT Brokers
 
@@ -54,9 +54,9 @@ Single-node compose stacks live under `ps_bench/docker-compose.single.*.yml`; se
 For DDS (brokerless): Use `docker-compose.single.dds.yml`
 
 ## Automated Single-Node Runs
-- MQTT (scalability): `./ps_bench/scripts/run-single-scalability-suite.sh` iterates the single-node scalability scenarios across `docker-compose.single.{emqx|mosquitto|nanomq|vernemq|mochi}.yml`, repeating each scenario three times by default (override with `REPEAT_COUNT=<n>`). Results are regrouped into broker folders under `ps_bench/results/<broker>/…`.
-- MQTT (QoS variation): `./ps_bench/scripts/run-single-qos-suite.sh` does the same for the QoS variation scenarios with the same knobs (`BROKER_LIST`, `SCEN_FILTER`, `REPEAT_COUNT`).
-- DDS: `./ps_bench/scripts/run-single-dds-suite.sh` walks the DDS scenarios from both suites with `docker-compose.single.dds.yml`, repeating each scenario three times by default (override with `REPEAT_COUNT=<n>`). Results land under `ps_bench/results/dds/<suite>/…`, keeping MQTT and DDS runs separate.
+- MQTT (scalability): `./psmark/scripts/run-single-scalability-suite.sh` iterates the single-node scalability scenarios across `docker-compose.single.{emqx|mosquitto|nanomq|vernemq|mochi}.yml`, repeating each scenario three times by default (override with `REPEAT_COUNT=<n>`). Results are regrouped into broker folders under `psmark/results/<broker>/…`.
+- MQTT (QoS variation): `./psmark/scripts/run-single-qos-suite.sh` does the same for the QoS variation scenarios with the same knobs (`BROKER_LIST`, `SCEN_FILTER`, `REPEAT_COUNT`).
+- DDS: `./psmark/scripts/run-single-dds-suite.sh` walks the DDS scenarios from both suites with `docker-compose.single.dds.yml`, repeating each scenario three times by default (override with `REPEAT_COUNT=<n>`). Results land under `psmark/results/dds/<suite>/…`, keeping MQTT and DDS runs separate.
 - All scripts honour `RUN_TAG` (default is scenario-based) and rely on the compose files’ overridable `SCEN_DIR`/`SCENARIO` environment variables if you need to point at custom configs.
 - Each run blocks until the compose stack exits; interrupting a script tears down the active stack automatically.
 
@@ -71,7 +71,7 @@ For DDS (brokerless): Use `docker-compose.single.dds.yml`
 
 Scaling variants (2x, 10x) multiply device counts proportionally.
 
-## Configuration Model (files under `ps_bench/configs`)
+## Configuration Model (files under `psmark/configs`)
 - Devices (`*.device`): defines device type payload size, frequency, disconnect/reconnect behavior.
 - Deployments (`*.deployment`): per-node device counts by device type.
 - Scenarios (`*.scenario`): selects protocol, deployment, node hosts, metrics, and protocol-specific config.
@@ -131,7 +131,7 @@ Scaling variants (2x, 10x) multiply device counts proportionally.
         ]}
     ]},
     {protocol_config, [
-        {client_interface_module, ps_bench_default_mqtt_interface},
+        {client_interface_module, psmark_default_mqtt_interface},
         {broker, "broker"},
         {port, 1883},
         {qos, [{default_qos, 0}]}
@@ -140,9 +140,9 @@ Scaling variants (2x, 10x) multiply device counts proportionally.
         {output_dir, "results"},
         {hw_stats_poll_period_ms, 1000},
         {metric_plugins, [
-            {ps_bench_throughput_calc_plugin, erlang},
-            {ps_bench_latency_calc_plugin, erlang},
-            {ps_bench_dropped_message_calc_plugin, erlang}
+            {psmark_throughput_calc_plugin, erlang},
+            {psmark_latency_calc_plugin, erlang},
+            {psmark_dropped_message_calc_plugin, erlang}
         ]}
     ]}
 ].
@@ -165,11 +165,11 @@ Scaling variants (2x, 10x) multiply device counts proportionally.
   - `init(OutDir) -> ok` called once per run with the timestamped run directory
   - `calc() -> ok` perform calculations and write outputs (e.g., CSV to `OutDir`)
 - Register the plugin in your scenario: add `{my_plugin_module, erlang}` to `metric_plugins`.
-- Access data via `ps_bench_store`:
+- Access data via `psmark_store`:
   - `fetch_recv_events/0`, `fetch_publish_events/0`, `fetch_connect_events/0`, `fetch_disconnect_events/0`
   - Filter helpers like `fetch_recv_events_by_filter/1`
   - HW stats if enabled: `fetch_cpu_usage/0`, `fetch_memory_usage/0` (and broker variants)
-- See `ps_bench/src/metrics/plugins/*.erl` for working examples. A complete how-to is in `docs/metrics-plugins.md`.
+- See `psmark/src/metrics/plugins/*.erl` for working examples. A complete how-to is in `docs/metrics-plugins.md`.
 
 ## Custom Protocol Interfaces
 - MQTT (Erlang): provide a module and set `protocol_config.client_interface_module = your_module`.
@@ -179,15 +179,15 @@ Scaling variants (2x, 10x) multiply device counts proportionally.
     - send events to `OwnerPid`:
       - `{?CONNECTED_MSG, {TimeNs}, ClientName}`
       - `{?DISCONNECTED_MSG, {TimeNs, Reason}, ClientName}`
-      - `{?PUBLISH_RECV_MSG, {TimeNs, Topic, Payload}, ClientName}` with payload header as in `ps_bench_utils:generate_mqtt_payload_data/3`
-  - The default implementation is `ps_bench_default_mqtt_interface` (see source for a solid reference).
-- DDS (NIF): provide a NIF module with the same exported functions as `ps_bench_default_dds_interface` and set `protocol_config.nif_module` and `nif_full_path` appropriately. The adapter expects: `init/1`, `create_participant/3`, `create_subscriber_on_topic/5`, `create_publisher_on_topic/4`, `publish_message/3`, `delete_subscriber/2`, `delete_publisher/2`.
+      - `{?PUBLISH_RECV_MSG, {TimeNs, Topic, Payload}, ClientName}` with payload header as in `psmark_utils:generate_mqtt_payload_data/3`
+  - The default implementation is `psmark_default_mqtt_interface` (see source for a solid reference).
+- DDS (NIF): provide a NIF module with the same exported functions as `psmark_default_dds_interface` and set `protocol_config.nif_module` and `nif_full_path` appropriately. The adapter expects: `init/1`, `create_participant/3`, `create_subscriber_on_topic/5`, `create_publisher_on_topic/4`, `publish_message/3`, `delete_subscriber/2`, `delete_publisher/2`.
 - Full details and minimal examples are in `docs/interfaces.md`.
 
 ## Local Development (without Docker)
 - Install Erlang/OTP 25+ and `rebar3`
-- Build: `cd ps_bench && rebar3 compile`
-- Run shell with config: `rebar3 shell --apps mnesia,ps_bench` (uses `configs/ps_bench.config`)
+- Build: `cd psmark && rebar3 compile`
+- Run shell with config: `rebar3 shell --apps mnesia,psmark` (uses `configs/psmark.config`)
 - Release build: `rebar3 release`
 
 ## Kubernetes Deployment (Experimental)
@@ -223,13 +223,13 @@ Each benchmark run produces the following CSV files:
 Enable HW stats by setting `{hw_stats_poll_period_ms, 1000}` in `metric_config`.
 
 ## Environment Overrides
-- Edit `ps_bench/.env` to adjust common variables like `SCENARIO`, `RUN_TAG`, `ADD_NODE_TO_SUFFIX`, and `RELEASE_COOKIE`.
-- One-off overrides: prefix the compose command, e.g. `SCENARIO=scalabilitysuite_smart_home_mqttv5 docker compose -f ps_bench/docker-compose.mqtt.emqx.yml up --build`.
+- Edit `psmark/.env` to adjust common variables like `SCENARIO`, `RUN_TAG`, `ADD_NODE_TO_SUFFIX`, and `RELEASE_COOKIE`.
+- One-off overrides: prefix the compose command, e.g. `SCENARIO=scalabilitysuite_smart_home_mqttv5 docker compose -f psmark/docker-compose.mqtt.emqx.yml up --build`.
 
 ## Submission Cleanup Checklist
 - Remove initial test configs not intended for submission:
-  - `ps_bench/configs/initial_tests/**`
-- Keep `ps_bench/configs/templates/**` and any curated examples you want to include.
+  - `psmark/configs/initial_tests/**`
+- Keep `psmark/configs/templates/**` and any curated examples you want to include.
 - Ensure README and docs reflect your final plugin/interface guidance.
 
 ## More Docs

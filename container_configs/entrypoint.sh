@@ -43,12 +43,12 @@ NODE_BASE="$(printf '%s' "$NODE_BASE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-
 case "$NODE_BASE" in [a-z]* ) : ;; * ) NODE_BASE="r_${NODE_BASE}" ;; esac
 [ -z "$NODE_BASE" ] && NODE_BASE="runner1"
 
-RELEASE_COOKIE="${RELEASE_COOKIE:-ps_bench_cookie}"
+RELEASE_COOKIE="${RELEASE_COOKIE:-psmark_cookie}"
 export NODE_BASE RELEASE_COOKIE
 
-REL_ROOT="$(ls -d /app/_build/*/rel/ps_bench 2>/dev/null | head -n1 || true)"
-[ -z "$REL_ROOT" ] && REL_ROOT="/app/_build/default/rel/ps_bench"
-BIN="$REL_ROOT/bin/ps_bench"
+REL_ROOT="$(ls -d /app/_build/*/rel/psmark 2>/dev/null | head -n1 || true)"
+[ -z "$REL_ROOT" ] && REL_ROOT="/app/_build/default/rel/psmark"
+BIN="$REL_ROOT/bin/psmark"
 
 log() {
   if [ "$IS_DDS" = "true" ]; then
@@ -314,7 +314,7 @@ configure_distribution() {
     log "Full node will be: $RELEASE_NODE"
   fi
 
-  export RELEASE_COOKIE="${RELEASE_COOKIE:-ps_bench_cookie}"
+  export RELEASE_COOKIE="${RELEASE_COOKIE:-psmark_cookie}"
   export SHORT_HOSTNAME
   if [ "$RELEASE_DISTRIBUTION" = "name" ]; then export FULL_HOSTNAME; fi
   log "RELEASE_COOKIE=$RELEASE_COOKIE"
@@ -555,9 +555,9 @@ main() {
   fi
 
   if [ "$IS_DDS" = "true" ]; then
-    log "Starting ps_bench (DDS) as ${NODE_BASE}@$(hostname) scenario=${SCEN_CHOSEN} pwd=`pwd`"
+    log "Starting psmark (DDS) as ${NODE_BASE}@$(hostname) scenario=${SCEN_CHOSEN} pwd=`pwd`"
   else
-    log "Starting ps_bench (MQTT) as ${NODE_BASE}@$(hostname) broker=${BROKER_HOST}:${BROKER_PORT} scenario=${SCEN_CHOSEN} pwd=`pwd`"
+    log "Starting psmark (MQTT) as ${NODE_BASE}@$(hostname) broker=${BROKER_HOST}:${BROKER_PORT} scenario=${SCEN_CHOSEN} pwd=`pwd`"
   fi
 
   log "Environment check before running:"
@@ -592,13 +592,13 @@ main() {
   log "Running: $BIN foreground"
 
   # Create a temp file to capture output for monitoring
-  APP_LOG="/tmp/ps_bench_output_$$.log"
+  APP_LOG="/tmp/psmark_output_$$.log"
   : > "$APP_LOG"
 
   # Start the app, writing to log file
   "$BIN" foreground >> "$APP_LOG" 2>&1 &
   APP_PID="$!"
-  log "Started ps_bench with PID $APP_PID"
+  log "Started psmark with PID $APP_PID"
 
   # Tail the log file to show output in docker logs
   tail -f "$APP_LOG" &
@@ -636,7 +636,7 @@ main() {
   rm -f "$APP_LOG"
 
   set -e
-  log "ps_bench exited with code ${APP_RC} converting metrics"
+  log "psmark exited with code ${APP_RC} converting metrics"
   convert_all_metrics
   copy_broker_logs
   log "Done"

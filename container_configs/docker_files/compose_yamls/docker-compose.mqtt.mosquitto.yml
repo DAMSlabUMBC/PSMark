@@ -41,7 +41,7 @@ services:
       BROKER_HOST: mosquitto
       BROKER_PORT: 1883
       ADD_NODE_TO_SUFFIX: ${ADD_NODE_TO_SUFFIX:-false}
-      RELEASE_COOKIE: ${RELEASE_COOKIE:-ps_bench_cookie}
+      RELEASE_COOKIE: ${RELEASE_COOKIE:-psmark_cookie}
       RUN_TAG: ${RUN_TAG:-mqtt_test}
       SCEN_DIR: /app/configs/builtin-test-suites/testcases
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
@@ -71,7 +71,7 @@ services:
       BROKER_HOST: mosquitto
       BROKER_PORT: 1883
       ADD_NODE_TO_SUFFIX: ${ADD_NODE_TO_SUFFIX:-false}
-      RELEASE_COOKIE: ${RELEASE_COOKIE:-ps_bench_cookie}
+      RELEASE_COOKIE: ${RELEASE_COOKIE:-psmark_cookie}
       RUN_TAG: ${RUN_TAG:-mqtt_test}
       SCEN_DIR: /app/configs/builtin-test-suites/testcases
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
@@ -100,7 +100,7 @@ services:
       BROKER_HOST: mosquitto
       BROKER_PORT: 1883
       ADD_NODE_TO_SUFFIX: ${ADD_NODE_TO_SUFFIX:-false}
-      RELEASE_COOKIE: ${RELEASE_COOKIE:-ps_bench_cookie}
+      RELEASE_COOKIE: ${RELEASE_COOKIE:-psmark_cookie}
       RUN_TAG: ${RUN_TAG:-mqtt_test}
       SCEN_DIR: /app/configs/builtin-test-suites/testcases
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
@@ -129,7 +129,7 @@ services:
       BROKER_HOST: mosquitto
       BROKER_PORT: 1883
       ADD_NODE_TO_SUFFIX: ${ADD_NODE_TO_SUFFIX:-false}
-      RELEASE_COOKIE: ${RELEASE_COOKIE:-ps_bench_cookie}
+      RELEASE_COOKIE: ${RELEASE_COOKIE:-psmark_cookie}
       RUN_TAG: ${RUN_TAG:-mqtt_test}
       SCEN_DIR: /app/configs/builtin-test-suites/testcases
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
@@ -158,7 +158,7 @@ services:
       BROKER_HOST: mosquitto
       BROKER_PORT: 1883
       ADD_NODE_TO_SUFFIX: ${ADD_NODE_TO_SUFFIX:-false}
-      RELEASE_COOKIE: ${RELEASE_COOKIE:-ps_bench_cookie}
+      RELEASE_COOKIE: ${RELEASE_COOKIE:-psmark_cookie}
       RUN_TAG: ${RUN_TAG:-mqtt_test}
       SCEN_DIR: /app/configs/builtin-test-suites/testcases
       DEVICE_DIR: /app/configs/builtin-test-suites/devices
