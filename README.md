@@ -1,47 +1,53 @@
 # PSMark
 
-Pub/Sub Benchmark for Large-Scale IoT Deployments. PSMark orchestrates synthetic device workloads across one or more Erlang nodes, publishes and subscribes via pluggable protocol clients (MQTT v5/v3.1.1 and DDS included), and calculates metrics via a simple plugin system.
-
-This repo contains the Erlang application, default protocol interfaces, example scenarios/devices/deployments, and Docker tooling to run locally or in distributed mode.
+PSMark is a distributed benchmark for evaluating publish/subscribe middleware in large-scale IoT deployments. It orchestrates synthetic device workloads across one or more nodes, measures end-to-end latency, throughput, and message loss, and supports both MQTT and DDS protocols.
 
 ## Key Features
-- Multi-node orchestration with deterministic seeds per node
-- Protocol adapters: MQTT (Erlang client) and DDS (NIF)
-- Config-driven devices, deployments, and scenarios
-- Metric plugins (currently Erlang-only) writing CSV outputs per run
-- Optional HW stats polling (Prometheus node_exporter)
 
-## Repository Layout
-- `psmark/src/core`: configuration, lifecycle, node management, storage
-- `psmark/src/protocol_clients`: adapters and default protocol implementations
-- `psmark/src/metrics`: metric manager, HW stats reader, plugins
-- `psmark/configs`: templates, built-in examples, and initial test configs
-- `psmark/Dockerfile` + `docker-compose.*.yml`: local/dev orchestration
-- `docs/`: how-tos for plugins and interfaces
+- **Multi-protocol support**: MQTT v5, MQTT v3.1.1, and DDS
+- **Realistic IoT workloads**: Four domain-specific scenarios with configurable device behaviors
+- **Distributed execution**: Scale from single-node to multi-node deployments
+- **Comprehensive metrics**: Latency, throughput, dropped messages, and hardware utilization
+- **Pluggable architecture**: Custom protocol adapters and metric plugins
 
-## Quick Start (5-Node)
-- Prereqs: Docker + Docker Compose
-- Build runner image (from `psmark/`):
-  - `cd psmark && docker build -t psmark-runner:latest -f Dockerfile .`
-- MQTT (EMQX broker) 5-node:
-  - `docker compose -f psmark/docker-compose.mqtt.emqx.yml up --build`
-- MQTT (Mosquitto broker) 5-node:
-  - `docker compose -f psmark/docker-compose.mqtt.mosquitto.yml up --build`
-- DDS (no broker) 5-node:
-  - `docker compose -f psmark/docker-compose.dds.yml up --build`
+## Requirements
 
-### Tear Down
-- Stop and remove containers: append `-d` to run detached, then `docker compose -f <compose-file> down`
-- Remove images if needed: `docker rmi psmark-runner:latest emqx-with-exporter mosquitto-with-exporter`
+- **Docker**: Docker Engine 20.10+ and Docker Compose v2
+- **For native development**: Erlang/OTP 25+ and rebar3
 
-### Notes
-- Compose files mount `./results` and per-runner `./out/<runner>` for artifacts.
-- Default scenarios used by the compose files are the built-in scalability test suites. Override with `SCENARIO=<name>` or edit `psmark/.env`.
-- Distribution uses long names (`-name`) and a bridge network `benchnet` compose handles hostname wiring.
+## Installation
 
-Single-node compose stacks live under `psmark/docker-compose.single.*.yml`; see the automation script below to run them in bulk.
+### Docker Setup (Recommended)
 
-## Supported MQTT Brokers
+```bash
+git clone https://github.com/DAMSlabUMBC/PSMark.git
+cd PSMark
+```
+
+No additional build steps required—Docker Compose handles image building automatically.
+
+### Native Setup (Without Docker)
+
+```bash
+cd ps_bench
+rebar3 compile
+rebar3 release
+```
+
+## Built-in Workloads
+
+PSMark includes four IoT domain workloads derived from real-world datasets:
+
+| Workload | Config Name | Devices | Description |
+|----------|-------------|---------|-------------|
+| PSMark-C | `smart_city` | 541 | Smart city sensors (meters, traffic, environment) |
+| PSMark-F | `smart_factory` | 40 | Factory automation (machines, robots) |
+| PSMark-HC | `smart_healthcare` | 24 | Healthcare monitoring (health sensors) |
+| PSMark-HM | `smart_home` | 20 | Smart home IoT (cameras, plugs, sensors) |
+
+Scaling variants (2x, 10x) multiply device counts proportionally.
+
+## Supported Brokers
 
 | Broker | Version | Compose File |
 |--------|---------|--------------|
@@ -53,71 +59,139 @@ Single-node compose stacks live under `psmark/docker-compose.single.*.yml`; see 
 
 For DDS (brokerless): Use `docker-compose.single.dds.yml`
 
-## Automated Single-Node Runs
-- MQTT (scalability): `./psmark/scripts/run-single-scalability-suite.sh` iterates the single-node scalability scenarios across `docker-compose.single.{emqx|mosquitto|nanomq|vernemq|mochi}.yml`, repeating each scenario three times by default (override with `REPEAT_COUNT=<n>`). Results are regrouped into broker folders under `psmark/results/<broker>/…`.
-- MQTT (QoS variation): `./psmark/scripts/run-single-qos-suite.sh` does the same for the QoS variation scenarios with the same knobs (`BROKER_LIST`, `SCEN_FILTER`, `REPEAT_COUNT`).
-- DDS: `./psmark/scripts/run-single-dds-suite.sh` walks the DDS scenarios from both suites with `docker-compose.single.dds.yml`, repeating each scenario three times by default (override with `REPEAT_COUNT=<n>`). Results land under `psmark/results/dds/<suite>/…`, keeping MQTT and DDS runs separate.
-- All scripts honour `RUN_TAG` (default is scenario-based) and rely on the compose files’ overridable `SCEN_DIR`/`SCENARIO` environment variables if you need to point at custom configs.
-- Each run blocks until the compose stack exits; interrupting a script tears down the active stack automatically.
+## Running Experiments
 
-## Built-in Workloads
+### Quick Start: Single Benchmark Run
 
-| Paper Name | Config Name | Devices | Description |
-|------------|-------------|---------|-------------|
-| PSMark-C | `smart_city` | 541 | Smart city sensors (meters, traffic, environment) |
-| PSMark-F | `smart_factory` | 40 | Factory automation (machines, robots) |
-| PSMark-HC | `smart_healthcare` | 24 | Healthcare monitoring (health sensors) |
-| PSMark-HM | `smart_home` | 20 | Smart home IoT (cameras, plugs, sensors) |
+Run a single benchmark with a specific broker:
 
-Scaling variants (2x, 10x) multiply device counts proportionally.
+```bash
+# Run smart_home workload with Mosquitto broker
+SCENARIO=scalabilitysuite_smart_home_mqttv5_1_node \
+docker compose -f container_configs/docker_files/compose_yamls/docker-compose.single.mosquitto.yml \
+up --build --abort-on-container-exit
+```
 
-## Configuration Model (files under `psmark/configs`)
-- Devices (`*.device`): defines device type payload size, frequency, disconnect/reconnect behavior.
-- Deployments (`*.deployment`): per-node device counts by device type.
-- Scenarios (`*.scenario`): selects protocol, deployment, node hosts, metrics, and protocol-specific config.
+### Automated Test Suites
 
-### Scenario Key Sections
-- `protocol`: one of `mqttv5`, `mqttv311`, or `dds`.
-- `protocol_config`:
-  - MQTT: `{client_interface_module, Module}`, `{broker, "IP"}`, `{port, 1883}`, `{qos, [{default_qos, 0} | {device_type, 1..2}]}`
-  - DDS: `{nif_module, Module}`, `{nif_full_path, "priv/..."}`, `{domain_id, Int}`, `{qos_profile, String}`, `{config_file, "configs/..."}`
-- `metric_config`:
-  - `{output_dir, "results"}` (base dir)
-  - Optional `{hw_stats_poll_period_ms, 1000}` to enable node_exporter polling
-  - `{metric_plugins, [{PluginModule, erlang}, ...]}`
+PSMark provides scripts to run complete test suites automatically:
 
-### Configuration Examples
+**MQTT Scalability Suite** (QoS 0):
+```bash
+# Run all brokers, all scenarios, 3 repeats each
+./ps_bench/scripts/run-single-scalability-suite.sh
 
-**Device Definition (`*.device`)** - Defines a sensor/device type with publication behavior:
+# Run specific broker(s)
+BROKER_LIST=emqx,mosquitto ./ps_bench/scripts/run-single-scalability-suite.sh
+
+# Filter by scenario name
+SCEN_FILTER=smart_factory ./ps_bench/scripts/run-single-scalability-suite.sh
+
+# Change repeat count
+REPEAT_COUNT=4 ./ps_bench/scripts/run-single-scalability-suite.sh
+```
+
+**MQTT QoS Variation Suite** (QoS 0 vs QoS 2):
+```bash
+./ps_bench/scripts/run-single-qos-suite.sh
+```
+
+**DDS Suite**:
+```bash
+./ps_bench/scripts/run-single-dds-suite.sh
+```
+
+### Multi-Node Benchmarks (5 Nodes)
+
+```bash
+# MQTT with EMQX broker
+docker compose -f container_configs/docker_files/compose_yamls/docker-compose.mqtt.emqx.yml up --build
+
+# DDS (brokerless)
+docker compose -f container_configs/docker_files/compose_yamls/docker-compose.dds.yml up --build
+```
+
+### Stopping Experiments
+
+```bash
+# Stop and remove containers
+docker compose -f <compose-file> down
+
+# Remove images if needed
+docker rmi psmark-runner:latest emqx-with-exporter mosquitto-with-exporter
+```
+
+## Results and Output
+
+Results are written to `container_configs/docker_files/compose_yamls/results/` with timestamped run folders (e.g., `run_20260120_143052_runner1/`).
+
+### Output CSV Files
+
+Each benchmark run produces:
+
+| File | Description |
+|------|-------------|
+| `throughput.csv` | Message throughput (avg, variance, min/max, P90/P95/P99) |
+| `latency.csv` | End-to-end latency in milliseconds (avg, variance, min/max, P90/P95/P99) |
+| `dropped_messages.csv` | Message loss (total sent/received, drop count, drop rate) |
+| `local_hw_stats.csv` | Runner node CPU and memory usage |
+| `broker_hw_stats.csv` | Broker node CPU and memory usage |
+
+### Example Output
+
+```csv
+# throughput.csv
+Receiver,Sender,DurationSeconds,TotalMessagesRecv,AverageThroughput,Variance,MinThroughput,MaxThroughput,...
+runner1,overall,600.02,341062,568.4,1780.5,20,604,...
+
+# latency.csv
+Receiver,Sender,SumTotalLatency,TotalMessagesRecv,AverageLatencyMs,VarianceMs,MinMs,MaxMs,...
+runner1,overall,681335486365,341062,1.99,13014572.8,0.18,64.56,...
+```
+
+## Configuration
+
+PSMark uses three types of Erlang configuration files in `ps_bench/configs/`:
+
+### Device Definition (`*.device`)
+
+Defines sensor behavior and publication patterns:
+
 ```erlang
 [
     {type, temperature_sensor},           % Unique device type identifier
-    {publication_frequency_ms, 1000},     % Publish every 1000ms (1 msg/s)
-    {payload_bytes_mean, 94},             % Average payload size in bytes
+    {publication_frequency_ms, 1000},     % Publish interval (1 msg/s)
+    {payload_bytes_mean, 94},             % Average payload size
     {payload_bytes_variance, 5},          % Payload size variance
-    {disconnect_check_period_ms, 1000},   % Check for disconnect every 1s
-    {disconnect_chance_pct, 0.05},        % 5% chance to disconnect per check
-    {reconnect_check_period_ms, 1000},    % Check for reconnect every 1s
-    {reconnect_chance_pct, 0.8}           % 80% chance to reconnect per check
+    {disconnect_check_period_ms, 1000},   % Disconnect check interval
+    {disconnect_chance_pct, 0.05},        % 5% disconnect probability
+    {reconnect_check_period_ms, 1000},    % Reconnect check interval
+    {reconnect_chance_pct, 0.8}           % 80% reconnect probability
 ].
 ```
 
-**Deployment Definition (`*.deployment`)** - Maps device types to counts per node:
+### Deployment Definition (`*.deployment`)
+
+Maps device types to node assignments:
+
 ```erlang
 [
     {name, my_deployment_1_node},
     {nodes, [
         {runner1, [
             {devices, [
-                {temperature_sensor, 10},   % 10 temperature sensors
-                {humidity_sensor, 5}        % 5 humidity sensors
+                {temperature_sensor, 10},
+                {humidity_sensor, 5}
             ]}
         ]}
     ]}
 ].
 ```
 
-**Scenario Definition (`*.scenario`)** - Combines protocol, deployment, and metrics:
+### Scenario Definition (`*.scenario`)
+
+Combines protocol, deployment, and metric settings:
+
 ```erlang
 [
     {name, my_benchmark_scenario},
@@ -131,7 +205,7 @@ Scaling variants (2x, 10x) multiply device counts proportionally.
         ]}
     ]},
     {protocol_config, [
-        {client_interface_module, psmark_default_mqtt_interface},
+        {client_interface_module, ps_bench_default_mqtt_interface},
         {broker, "broker"},
         {port, 1883},
         {qos, [{default_qos, 0}]}
@@ -140,98 +214,59 @@ Scaling variants (2x, 10x) multiply device counts proportionally.
         {output_dir, "results"},
         {hw_stats_poll_period_ms, 1000},
         {metric_plugins, [
-            {psmark_throughput_calc_plugin, erlang},
-            {psmark_latency_calc_plugin, erlang},
-            {psmark_dropped_message_calc_plugin, erlang}
+            {ps_bench_throughput_calc_plugin, erlang},
+            {ps_bench_latency_calc_plugin, erlang},
+            {ps_bench_dropped_message_calc_plugin, erlang}
         ]}
     ]}
 ].
 ```
 
-**Application Configuration File (`*.deployment`)** - Sets the base configuration and links to the definition files:
-```erlang
-[{psmark,
-    [{node_name, runner1},
-    {device_definitions_directory, "configs/builtin-test-suites/devices"},
-    {deployment_definitions_directory, "configs/builtin-test-suites/deployments"},
-    {scenario_definitions_directory, "configs/builtin-test-suites/testcases"},
-    {selected_scenario, scalabilitysuite_smart_home_mqttv5_1_node}
-  ]}
-].
+### Environment Variables
+
+Override default settings via environment variables:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `SCENARIO` | Scenario name to run | `scalabilitysuite_smart_home_mqttv5_1_node` |
+| `BROKER_LIST` | Comma-separated broker list | `emqx,mosquitto` |
+| `REPEAT_COUNT` | Number of repetitions | `4` |
+| `SCEN_FILTER` | Filter scenarios by substring | `smart_factory` |
+
+## Repository Structure
+
+```
+PSMark/
+├── ps_bench/                    # Main Erlang application
+│   ├── src/
+│   │   ├── core/               # Configuration, lifecycle, storage
+│   │   ├── protocol_clients/   # MQTT and DDS adapters
+│   │   └── metrics/            # Metric plugins
+│   ├── configs/
+│   │   ├── builtin-test-suites/  # Built-in workloads
+│   │   └── templates/            # Configuration templates
+│   └── scripts/                # Automation scripts
+├── container_configs/
+│   └── docker_files/
+│       └── compose_yamls/      # Docker Compose files
+└── docs/                       # Additional documentation
 ```
 
-## Adding Metric Plugins (Erlang)
-- Implement a module with the following callbacks:
-  - `init(OutDir) -> ok` called once per run with the timestamped run directory
-  - `calc() -> ok` perform calculations and write outputs (e.g., CSV to `OutDir`)
-- Register the plugin in your scenario: add `{my_plugin_module, erlang}` to `metric_plugins`.
-- Access data via `psmark_store`:
-  - `fetch_recv_events/0`, `fetch_publish_events/0`, `fetch_connect_events/0`, `fetch_disconnect_events/0`
-  - Filter helpers like `fetch_recv_events_by_filter/1`
-  - HW stats if enabled: `fetch_cpu_usage/0`, `fetch_memory_usage/0` (and broker variants)
-- See `psmark/src/metrics/plugins/*.erl` for working examples. A complete how-to is in `docs/metrics-plugins.md`.
+## Extending PSMark
 
-## Custom Protocol Interfaces
-- MQTT (Erlang): provide a module and set `protocol_config.client_interface_module = your_module`.
-  - Your module should be a `gen_server` implementing:
-    - `start_link(ScenarioName, ClientName, OwnerPid)` registers under `ClientName`
-    - handle calls: `connect | connect_clean | reconnect | {subscribe, Props, Topics} | {publish, Props, Topic, Payload, PubOpts} | {unsubscribe, Topics} | disconnect | stop`
-    - send events to `OwnerPid`:
-      - `{?CONNECTED_MSG, {TimeNs}, ClientName}`
-      - `{?DISCONNECTED_MSG, {TimeNs, Reason}, ClientName}`
-      - `{?PUBLISH_RECV_MSG, {TimeNs, Topic, Payload}, ClientName}` with payload header as in `psmark_utils:generate_mqtt_payload_data/3`
-  - The default implementation is `psmark_default_mqtt_interface` (see source for a solid reference).
-- DDS (NIF): provide a NIF module with the same exported functions as `psmark_default_dds_interface` and set `protocol_config.nif_module` and `nif_full_path` appropriately. The adapter expects: `init/1`, `create_participant/3`, `create_subscriber_on_topic/5`, `create_publisher_on_topic/4`, `publish_message/3`, `delete_subscriber/2`, `delete_publisher/2`.
-- Full details and minimal examples are in `docs/interfaces.md`.
+### Custom Metric Plugins
 
-## Local Development (without Docker)
-- Install Erlang/OTP 25+ and `rebar3`
-- Build: `cd psmark && rebar3 compile`
-- Run shell with config: `rebar3 shell --apps mnesia,psmark` (uses `configs/psmark.config`)
-- Release build: `rebar3 release`
+Implement an Erlang module with:
+- `init(OutDir) -> ok` — Initialize with output directory
+- `calc() -> ok` — Calculate and write metrics
 
-## Kubernetes Deployment (Experimental)
+Register in your scenario's `metric_plugins` list. See `docs/metrics-plugins.md` for details.
 
-Kubernetes manifests for broker deployments are in `container_configs/kubernetes_yaml/`.
+### Custom Protocol Adapters
 
-```bash
-# Deploy a broker (e.g., EMQX)
-kubectl apply -f container_configs/kubernetes_yaml/emqx-deployment.yaml
+Implement a `gen_server` module for MQTT or a NIF module for DDS. See `docs/interfaces.md` for the full interface specification.
 
-# Deploy headless service for runners
-kubectl apply -f container_configs/kubernetes_yaml/runner-service.yaml
-```
+## Additional Documentation
 
-**Note:** Runner pod manifests are not yet provided. Use the Docker Compose multi-node setup for distributed benchmarks.
-
-## Results
-- Metric CSVs are written by plugins to the run directory under `metric_config.output_dir` with a run-specific subfolder.
-- If HW stats polling is enabled, `local_hw_stats.csv` is always written; when primary, `broker_hw_stats.csv` is also written.
-
-### Output CSV Files
-
-Each benchmark run produces the following CSV files:
-
-| File | Source | Description |
-|------|--------|-------------|
-| `throughput.csv` | Throughput plugin | Message throughput (AverageThroughput, Variance, Min/Max/Median/P90/P95/P99) |
-| `latency.csv` | Latency plugin | End-to-end latency (AverageLatencyMs, VarianceMs, Min/Max/Median/P90/P95/P99) |
-| `dropped_messages.csv` | Dropped message plugin | Message loss (TotalSent, TotalRecv, TotalDropped, DropRate) |
-| `local_hw_stats.csv` | HW stats reader | Runner CPU/memory usage |
-| `broker_hw_stats.csv` | HW stats reader | Broker CPU/memory usage |
-
-Enable HW stats by setting `{hw_stats_poll_period_ms, 1000}` in `metric_config`.
-
-## Environment Overrides
-- Edit `psmark/.env` to adjust common variables like `SCENARIO`, `RUN_TAG`, `ADD_NODE_TO_SUFFIX`, and `RELEASE_COOKIE`.
-- One-off overrides: prefix the compose command, e.g. `SCENARIO=scalabilitysuite_smart_home_mqttv5 docker compose -f psmark/docker-compose.mqtt.emqx.yml up --build`.
-
-## Submission Cleanup Checklist
-- Remove initial test configs not intended for submission:
-  - `psmark/configs/initial_tests/**`
-- Keep `psmark/configs/templates/**` and any curated examples you want to include.
-- Ensure README and docs reflect your final plugin/interface guidance.
-
-## More Docs
-- Metrics plugins (Erlang-only for now): `docs/metrics-plugins.md`
-- Custom protocol interfaces: `docs/interfaces.md`
+- [Metric Plugins Guide](docs/metrics-plugins.md)
+- [Protocol Interfaces Guide](docs/interfaces.md)
