@@ -61,6 +61,9 @@ For DDS (brokerless): Use `docker-compose.single.dds.yml`
 
 ## Running Experiments
 
+### **A Note on Permissions**
+Currently, the Docker containers are configured to run as the superuser `root` to simplify the execution of third-party broker containers. It is heavily advised to run all commands below as the `root` user or with `sudo` on the host machine to prevent permission errors.
+
 ### Quick Start: Single Benchmark Run
 
 Run a single benchmark with a specific broker:
