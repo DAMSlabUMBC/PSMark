@@ -260,7 +260,7 @@ write_stats_to_file(OutFile, NodeName, CPUResults, MemResults) ->
 
       % Open file and write the results
       {ok, File} = file:open(OutFile, [write]),
-      io:format(File, "Node,MinCPUUsage,MaxCPUUsage,AverageCPUUsage,CPUUsageVariance,MedianCPUUsage,P90CPU,P95CPU,P99CPU,MinMemoryUsage,MaxMemoryUsage,AverageMemoryUsage,MemoryUsageVariance,MedianMemoryUsage,P90CMemory,P95Memory,P99Memory~n", []),
+      io:format(File, "Node,MinCPUUsagePct,MaxCPUUsagePct,AverageCPUUsagePct,CPUUsageVariance,MedianCPUUsagePct,P90CPUPct,P95CPUPct,P99CPUPct,MinMemoryUsagePct,MaxMemoryUsagePct,AverageMemoryUsagePct,MemoryUsageVariance,MedianMemoryUsagePct,P90MemoryPct,P95MemoryPct,P99MemoryPct~n", []),
       io:format(File, "~p,~p,~p,~p,~p,~p,~p,~p,~p,~p,~p,~p,~p,~p,~p,~p,~p~n",[NodeName, MinCpuUsage, MaxCpuUsage, AvgCpuUsage, CpuVariance, MedianCpuUsage, P90CpuUsage, P95CpuUsage, P99CpuUsage, MinMemUsage, MaxMemUsage, AvgMemUsage, MemVariance, MedianMemUsage, P90MemUsage, P95MemUsage, P99MemUsage]),
 	  
 	  % Ensure data is written to disk; ignore errors on platforms where sync is not supported

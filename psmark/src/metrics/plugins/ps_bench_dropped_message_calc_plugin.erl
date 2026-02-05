@@ -77,7 +77,7 @@ write_csv(Results) ->
 
       % Open file and write the results
       {ok, File} = file:open(FullPath, [write]),
-      io:format(File, "Receiver,Sender,TotalMessagesSentFromSender,PubsDroppedFromSender,DroppedAsPct~n", []),
+      io:format(File, "Receiver,Sender,TotalSentFromSenderMsgs,DroppedFromSenderMsgs,DroppedPct~n", []),
       lists:foreach(
             fun({SourceNode, DestNode, AllPubsCount, DroppedPubsCount}) ->
                   PctDropped = case AllPubsCount of

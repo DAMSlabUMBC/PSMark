@@ -110,7 +110,7 @@ write_csv(Results) ->
 
       % Open file and write the results
       {ok, File} = file:open(FullPath, [write]),
-      io:format(File, "Receiver,Sender,SumTotalLatency,TotalMessagesRecv,AverageLatencyMs,VarianceMs,MinMs,MaxMs,MedianMs,P90Ms,P95Ms,P99Ms~n", []),
+      io:format(File, "Receiver,Sender,SumTotalLatencyMs,TotalMessagesRecvMsgs,AverageLatencyMs,Variance,MinMs,MaxMs,MedianMs,P90Ms,P95Ms,P99Ms~n", []),
       lists:foreach(
             fun({SourceNode, DestNode, OverallLatency, TotalMessages, AvgLatencyMs, VarianceMs, MinValueMs, MaxValueMs, MedianValueMs, P90ValueMs, P95ValueMs, P99ValueMs}) ->
                   io:format(File, "~p,~p,~p,~p,~p,~p,~p,~p,~p,~p,~p,~p~n",[SourceNode, DestNode, OverallLatency, TotalMessages, AvgLatencyMs, VarianceMs, MinValueMs, MaxValueMs, MedianValueMs, P90ValueMs, P95ValueMs, P99ValueMs])
