@@ -5,7 +5,7 @@ SCRIPT_PATH=$(realpath "$0")
 SCRIPT_DIR=$(dirname $SCRIPT_PATH)
 DOCKERFILE_DIR="${SCRIPT_DIR}/../container_configs/docker_files"
 CONFIG_DIR="${SCRIPT_DIR}/../container_configs"
-SRC_DIR="${SCRIPT_DIR}/../ps_bench"
+SRC_DIR="${SCRIPT_DIR}/../psmark"
 
 # Build the containers
 cd $SRC_DIR

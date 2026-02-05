@@ -134,7 +134,7 @@ Combines protocol, deployment, and metric settings:
         ]}
     ]},
     {protocol_config, [
-        {client_interface_module, ps_bench_default_mqtt_interface},
+        {client_interface_module, psmark_default_mqtt_interface},
         {broker, "broker"},
         {port, 1883},
         {qos, [{default_qos, 0}]}
@@ -143,9 +143,9 @@ Combines protocol, deployment, and metric settings:
         {output_dir, "results"},
         {hw_stats_poll_period_ms, 1000},
         {metric_plugins, [
-            {ps_bench_throughput_calc_plugin, erlang},
-            {ps_bench_latency_calc_plugin, erlang},
-            {ps_bench_dropped_message_calc_plugin, erlang}
+            {psmark_throughput_calc_plugin, erlang},
+            {psmark_latency_calc_plugin, erlang},
+            {psmark_dropped_message_calc_plugin, erlang}
         ]}
     ]}
 ].

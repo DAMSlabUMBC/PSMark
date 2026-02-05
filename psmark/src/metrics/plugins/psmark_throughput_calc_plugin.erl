@@ -1,4 +1,4 @@
--module(ps_bench_throughput_calc_plugin).
+-module(psmark_throughput_calc_plugin).
 
 -export([init/1, calc/0]).
 
@@ -14,22 +14,22 @@ calc() ->
     
 calculate_overall_throughput() ->
       % Get all messages recieved by this node
-      {ok, NodeName} = ps_bench_config_manager:fetch_node_name(),
+      {ok, NodeName} = psmark_config_manager:fetch_node_name(),
       calculate_pairwise_throughput_for_one_node(NodeName, overall).
 
 calculate_pairwise_throughput() ->
       % Get all messages recieved by this node
-      {ok, NodeName} = ps_bench_config_manager:fetch_node_name(),
-      {ok, AllNodeNames} = ps_bench_config_manager:fetch_node_name_list(),
+      {ok, NodeName} = psmark_config_manager:fetch_node_name(),
+      {ok, AllNodeNames} = psmark_config_manager:fetch_node_name_list(),
       lists:map(fun(TargetNode) -> calculate_pairwise_throughput_for_one_node(NodeName, TargetNode) end, AllNodeNames).
 
 calculate_pairwise_throughput_for_one_node(ThisNode, TargetNode) ->
 
       AllRecvEvents = case TargetNode of
             overall ->
-                  ps_bench_store:fetch_recv_events_by_filter({ThisNode, '_', '_', '_', '_', '_', '_', '_'});
+                  psmark_store:fetch_recv_events_by_filter({ThisNode, '_', '_', '_', '_', '_', '_', '_'});
             _ ->
-                  ps_bench_store:fetch_recv_events_by_filter({ThisNode, '_', TargetNode, '_', '_', '_', '_', '_'})
+                  psmark_store:fetch_recv_events_by_filter({ThisNode, '_', TargetNode, '_', '_', '_', '_', '_'})
       end,
 
       TotalMessages = length(AllRecvEvents),

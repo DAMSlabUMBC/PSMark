@@ -1,7 +1,7 @@
--module(ps_bench_default_mqtt_interface).
+-module(psmark_default_mqtt_interface).
 -behaviour(gen_server).
 
--include("ps_bench_config.hrl").
+-include("psmark_config.hrl").
 
 %% public
 -export([start_link/3]).
@@ -12,7 +12,7 @@
          terminate/2, code_change/3]).
 
 start_link(ScenarioName, ClientName0, OwnerPid) ->
-    RegName = ps_bench_utils:convert_to_atom(ClientName0),
+    RegName = psmark_utils:convert_to_atom(ClientName0),
     gen_server:start_link({local, RegName}, ?MODULE, {ScenarioName, RegName, OwnerPid}, []).
 
 %%%===================================================================
@@ -20,7 +20,7 @@ start_link(ScenarioName, ClientName0, OwnerPid) ->
 %%%===================================================================
 
 init({ScenarioName, RegName, OwnerPid}) ->
-    ClientIdBin = ps_bench_utils:convert_to_binary(RegName),
+    ClientIdBin = psmark_utils:convert_to_binary(RegName),
     {ok, #{scenario_name => ScenarioName, client_name => ClientIdBin, reg_name => RegName, client_pid => 0, owner_pid => OwnerPid, connected => false, first_start => true}}.
 
 handle_call(connect, _From, State = #{first_start := FirstStart}) ->
@@ -93,20 +93,20 @@ handle_info(Info, State) ->
         {'EXIT', _Pid, Reason} ->
             handle_exception(Reason, State);
         _ ->
-            ps_bench_utils:log_message("Recieved unknown info: ~p", [Info]),
+            psmark_utils:log_message("Recieved unknown info: ~p", [Info]),
             {noreply, State}
     end.
 
 handle_exception(Reason, State) ->
     case Reason of
         {shutdown, econnrefused} ->
-            ps_bench_utils:log_message("ERROR: MQTT Broker refused connection. Ensure connection parameters are correct"),
+            psmark_utils:log_message("ERROR: MQTT Broker refused connection. Ensure connection parameters are correct"),
             {kill, Reason};
         normal ->
             % Do nothing
             {noreply, State};
         _ ->
-            ps_bench_utils:log_message("ERROR: Recieved termination signal: ~p", [Reason]),
+            psmark_utils:log_message("ERROR: Recieved termination signal: ~p", [Reason]),
             {noreply, State}
     end.
 
@@ -118,8 +118,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 start_client_link(ClientName, CleanStart, OwnerPid) ->
     
-    {ok, BrokerIP, BrokerPort} = ps_bench_config_manager:fetch_mqtt_broker_information(),
-    {ok, Protocol} = ps_bench_config_manager:fetch_protocol_type(),
+    {ok, BrokerIP, BrokerPort} = psmark_config_manager:fetch_mqtt_broker_information(),
+    {ok, Protocol} = psmark_config_manager:fetch_protocol_type(),
 
     % Configure properties
     PropList = [
@@ -156,15 +156,15 @@ do_connect(CleanStart, State = #{client_name := ClientName, owner_pid := OwnerPi
                             {reply, {ok, new_connection},
                              State#{client_pid := NewClientPid, connected := true, first_start := false}};
                         {error, Reason} ->
-                            ps_bench_utils:log_message("MQTT connect failed for ~s with reason ~p", [ClientName, Reason]),
+                            psmark_utils:log_message("MQTT connect failed for ~s with reason ~p", [ClientName, Reason]),
                             % Keep the server alive; report the error upward
                             {reply, {error, Reason}, State}
                     end;
                 {error, Reason} ->
-                    ps_bench_utils:log_message("MQTT client start_link failed (~p): ~p", [ClientName, Reason]),
+                    psmark_utils:log_message("MQTT client start_link failed (~p): ~p", [ClientName, Reason]),
                     {reply, {error, Reason}, State};
                 Res ->
-                    ps_bench_utils:log_message("Error ~p", [Res])
+                    psmark_utils:log_message("Error ~p", [Res])
             end;
         true ->
             {reply, {ok, already_connected}, State}

@@ -1,9 +1,9 @@
--module(ps_bench_scenario_manager).
+-module(psmark_scenario_manager).
 
--include("ps_bench_config.hrl").
+-include("psmark_config.hrl").
 
--define(CLIENT_SUPERVISOR, ps_bench_client_sup).
--define(NODE_MANAGER, ps_bench_node_manager).
+-define(CLIENT_SUPERVISOR, psmark_client_sup).
+-define(NODE_MANAGER, psmark_node_manager).
 
 %% public
 -export([initialize_scenario/0, run_scenario/0, stop_scenario/0, clean_up_scenario/0]).
@@ -11,8 +11,8 @@
 % Currently we only support one scenario a run
 initialize_scenario() ->
     
-    {ok, ScenarioName} = ps_bench_config_manager:fetch_selected_scenario(),
-    ps_bench_utils:log_state_change("Initializing Scenario: ~p", [ScenarioName]),
+    {ok, ScenarioName} = psmark_config_manager:fetch_selected_scenario(),
+    psmark_utils:log_state_change("Initializing Scenario: ~p", [ScenarioName]),
     
     initialize_clients(),
     print_clients(),
@@ -22,22 +22,22 @@ initialize_scenario() ->
 
 run_scenario() ->
 
-    {ok, ScenarioName} = ps_bench_config_manager:fetch_selected_scenario(),
-    ps_bench_utils:log_state_change("Starting Scenario: ~p", [ScenarioName]),
+    {ok, ScenarioName} = psmark_config_manager:fetch_selected_scenario(),
+    psmark_utils:log_state_change("Starting Scenario: ~p", [ScenarioName]),
 
-    {ok, DurationMs} = ps_bench_config_manager:fetch_scenario_duration(),
+    {ok, DurationMs} = psmark_config_manager:fetch_scenario_duration(),
 
     % Display time and duration for user
     {{Y,M,D},{H,MM,SS}} = erlang:localtime(),
     TimeStr = lists:flatten(io_lib:format("~B-~2.10.0B-~2.10.0B ~2.10.0B:~2.10.0B:~2.10.0B", [Y, M, D,H,MM,SS])),
-    ps_bench_utils:log_message("Starting at ~s and running for ~pms", [TimeStr, DurationMs]),
+    psmark_utils:log_message("Starting at ~s and running for ~pms", [TimeStr, DurationMs]),
 
     start_client_loops(),
     _Ref = timer:apply_after(DurationMs, ?MODULE, stop_scenario, []).
 
 stop_scenario() ->
-    {ok, ScenarioName} = ps_bench_config_manager:fetch_selected_scenario(),
-    ps_bench_utils:log_state_change("Stopping Scenario: ~p", [ScenarioName]),
+    {ok, ScenarioName} = psmark_config_manager:fetch_selected_scenario(),
+    psmark_utils:log_state_change("Stopping Scenario: ~p", [ScenarioName]),
 
     % Stop clients and notify the benchmarking scenario is complete
     stop_publishers(),
@@ -47,15 +47,15 @@ stop_scenario() ->
     gen_server:cast(?NODE_MANAGER, global_continue).
 
 clean_up_scenario() ->
-    ps_bench_utils:log_state_change("Removing Scenario Clients"),
+    psmark_utils:log_state_change("Removing Scenario Clients"),
     stop_subscriber(),
     destroy_clients().
 
 initialize_clients() ->
 
     % Fetch devices for this node
-    {ok, NodeDevices} = ps_bench_config_manager:fetch_devices_for_this_node(),
-    {ok, NodeName} = ps_bench_config_manager:fetch_node_name(),
+    {ok, NodeDevices} = psmark_config_manager:fetch_devices_for_this_node(),
+    {ok, NodeName} = psmark_config_manager:fetch_node_name(),
 
     % Initialize each publication client for each device
     ClientList = initialize_clients_for_devices(NodeName, NodeDevices, []),
@@ -146,9 +146,9 @@ destroy_clients() ->
 
 print_clients() ->
     {SubscriberName, SubscriberClient} = persistent_term:get({?MODULE, subscription_client}),
-    ps_bench_utils:log_message("~p - ~p", [SubscriberName, SubscriberClient]),
+    psmark_utils:log_message("~p - ~p", [SubscriberName, SubscriberClient]),
 
     ClientList = persistent_term:get({?MODULE, device_clients}),
-    ps_bench_utils:log_state_change("All Clients"),
-    PrintFunction = fun({ClientName, ClientPid}) -> ps_bench_utils:log_message("~p - ~p", [ClientName, ClientPid]) end,
+    psmark_utils:log_state_change("All Clients"),
+    PrintFunction = fun({ClientName, ClientPid}) -> psmark_utils:log_message("~p - ~p", [ClientName, ClientPid]) end,
     lists:foreach(PrintFunction, ClientList).

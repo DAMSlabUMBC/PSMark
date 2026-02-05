@@ -140,24 +140,24 @@ def calc_runner_metrics(recv_events, pub_events, connect_events, disconnect_even
     global PLUGINS
 
     log_message = f'Converting recv events to python format'
-    erlang.call(_atom("ps_bench_utils"), _atom("log_message"), [log_message])
-    recv_events= erlang.call(_atom("ps_bench_store"), _atom("fetch_recv_events"), [])
+    erlang.call(_atom("psmark_utils"), _atom("log_message"), [log_message])
+    recv_events= erlang.call(_atom("psmark_store"), _atom("fetch_recv_events"), [])
     # recv_event_list = _convert_recv_events_from_erlang(recv_events)
     print(recv_events)
     
     log_message = f'Converting pub events to python format'
-    erlang.call(_atom("ps_bench_utils"), _atom("log_message"), [log_message])
-    pub_events= erlang.call(_atom("ps_bench_store"), _atom("fetch_publish_events"), [])
+    erlang.call(_atom("psmark_utils"), _atom("log_message"), [log_message])
+    pub_events= erlang.call(_atom("psmark_store"), _atom("fetch_publish_events"), [])
     # pub_event_list = _convert_pub_events_from_erlang(pub_events)
     
     log_message = f'Converting connect events to python format'
-    erlang.call(_atom("ps_bench_utils"), _atom("log_message"), [log_message])
-    connect_events= erlang.call(_atom("ps_bench_store"), _atom("fetch_publish_events"), [])
+    erlang.call(_atom("psmark_utils"), _atom("log_message"), [log_message])
+    connect_events= erlang.call(_atom("psmark_store"), _atom("fetch_publish_events"), [])
     # connect_event_list = _convert_connect_events_from_erlang(connect_events)
     
     log_message = f'Converting disconnect events to python format'
-    erlang.call(_atom("ps_bench_utils"), _atom("log_message"), [log_message])
-    disconnect_events= erlang.call(_atom("ps_bench_store"), _atom("fetch_disconnect_events"), [])
+    erlang.call(_atom("psmark_utils"), _atom("log_message"), [log_message])
+    disconnect_events= erlang.call(_atom("psmark_store"), _atom("fetch_disconnect_events"), [])
     # disconnect_event_list = _convert_disconnect_events_from_erlang(disconnect_events)
     
     this_node_name = _to_str(this_node_name_erlang)
@@ -169,11 +169,11 @@ def calc_runner_metrics(recv_events, pub_events, connect_events, disconnect_even
         simple_name = plugin_name.replace("plugins.", "")
         if callable(calc_fn):
             log_message = f'Calculating runner metrics with python plugin: {simple_name}'
-            erlang.call(_atom("ps_bench_utils"), _atom("log_message"), [log_message])
+            erlang.call(_atom("psmark_utils"), _atom("log_message"), [log_message])
             # calc_fn(recv_event_list, pub_event_list, connect_event_list, disconnect_event_list, this_node_name, all_nodes_list)
         else:
             log_message = f'No runner calculation method was defined for python plugin: {simple_name}'
-            erlang.call(_atom("ps_bench_utils"), _atom("log_message"), [log_message])  
+            erlang.call(_atom("psmark_utils"), _atom("log_message"), [log_message])  
             
     return _atom("ok")
     

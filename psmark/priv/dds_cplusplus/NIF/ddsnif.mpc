@@ -1,5 +1,5 @@
-project(ps_bench_default_dds_interface) : dcps {
-	sharedname = ps_bench_default_dds_interface
+project(psmark_default_dds_interface) : dcps {
+	sharedname = psmark_default_dds_interface
 	libout = $(COMPILE_ROOT)/lib
 	
 	after += DDS_IDL

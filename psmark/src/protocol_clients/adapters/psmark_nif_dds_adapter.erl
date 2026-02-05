@@ -1,7 +1,7 @@
--module(ps_bench_nif_dds_adapter).
+-module(psmark_nif_dds_adapter).
 -behaviour(gen_server).
 
--include("ps_bench_config.hrl").
+-include("psmark_config.hrl").
 
 -define(SUBSCRIPTION_ETS_TABLE_NAME, current_dds_subscriptions).
 
@@ -20,7 +20,7 @@
          terminate/2, code_change/3]).
 
 start_link(TestName, NifName, FullNifPath, DomainId, ClientName, DeviceType) ->
-    ClientNameAtom = ps_bench_utils:convert_to_atom(ClientName),
+    ClientNameAtom = psmark_utils:convert_to_atom(ClientName),
     gen_server:start_link({local, ClientNameAtom}, ?MODULE, [TestName, NifName, FullNifPath, ClientNameAtom, DeviceType, DomainId], []).
 
 %%%===================================================================
@@ -30,9 +30,9 @@ start_link(TestName, NifName, FullNifPath, DomainId, ClientName, DeviceType) ->
 init([TestName, NifName, FullNifPath, ClientName, DeviceType, DomainId]) ->
 
     % Initialize the NIF if not already done
-    NifModule  = ps_bench_utils:convert_to_atom(NifName),
+    NifModule  = psmark_utils:convert_to_atom(NifName),
     ok = initialize_nif(NifModule, FullNifPath),
-    {ok, ConfigFile} = ps_bench_config_manager:fetch_dds_config_file_path(),
+    {ok, ConfigFile} = psmark_config_manager:fetch_dds_config_file_path(),
     {ok, Participant} = retrieve_or_create_participant(NifModule, DomainId, ConfigFile),
 
     Tid = ensure_subs_table(),
@@ -70,7 +70,7 @@ handle_call(subscribe, _From, State = #{nif_module := NifModule, participant := 
     case Subscriber of
         undefined ->
             % Create the subscriber for this client
-            {ok, QoSProfile} = ps_bench_config_manager:fetch_dds_qos_profile(),
+            {ok, QoSProfile} = psmark_config_manager:fetch_dds_qos_profile(),
             {ok, NewSubscriber} = NifModule:create_subscriber_on_topic(?DDS_TOPIC, atom_to_list(ClientName), Participant, self(), QoSProfile),
 
             % Save the fact we were subscribed to this topic for disconnections
@@ -93,7 +93,7 @@ handle_call(subscribe, _From, State = #{nif_module := NifModule, participant := 
 handle_call({publish, SeqId, Data}, _From, State = #{client_name := ClientName, nif_module := NifModule, publisher := Publisher}) -> 
     case NifModule:publish_message(SeqId, Data, Publisher) of
         ok ->
-            ps_bench_store:record_publish(ClientName, ?DDS_TOPIC, SeqId);
+            psmark_store:record_publish(ClientName, ?DDS_TOPIC, SeqId);
         not_connected ->
             ok
     end,
@@ -156,7 +156,7 @@ handle_cast(stop, State = #{pub_task := PubTaskRef, discon_task := DisconLoopTas
 handle_info({?PUBLISH_RECV_MSG, {ClientName, Topic, SeqId, PubTimeNs, RecvTimeNs, Bytes, PublisherId}}, State) ->
     % Extracted needed info and store
     AtomId = list_to_atom(PublisherId),
-    ps_bench_store:record_recv(ClientName, Topic, SeqId, PubTimeNs, RecvTimeNs, Bytes, AtomId),
+    psmark_store:record_recv(ClientName, Topic, SeqId, PubTimeNs, RecvTimeNs, Bytes, AtomId),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -164,19 +164,19 @@ handle_info(_Info, State) ->
 
 start_publication_loop(DeviceType, ClientName) ->
     % Lookup needed parameters
-    {ok, PubFrequencyMs} = ps_bench_config_manager:fetch_device_publication_frequency(DeviceType),
-    {ok, PayloadSizeMean, PayloadSizeVariance} = ps_bench_config_manager:fetch_device_payload_info(DeviceType),
+    {ok, PubFrequencyMs} = psmark_config_manager:fetch_device_publication_frequency(DeviceType),
+    {ok, PayloadSizeMean, PayloadSizeVariance} = psmark_config_manager:fetch_device_payload_info(DeviceType),
 
     % Create task
     timer:apply_interval(PubFrequencyMs, fun publication_loop/3, [ClientName, PayloadSizeMean, PayloadSizeVariance]).
 
 publication_loop(ClientName, PayloadSizeMean, PayloadSizeVariance) ->
-    {SeqId, Payload} = ps_bench_utils:generate_dds_datatype_data(PayloadSizeMean, PayloadSizeVariance),
+    {SeqId, Payload} = psmark_utils:generate_dds_datatype_data(PayloadSizeMean, PayloadSizeVariance),
     gen_server:call(ClientName, {publish, SeqId, Payload}).
 
 start_disconnection_loop(DeviceType, ClientName) ->
     % Lookup needed parameters
-    {ok, DisconPeriodMs, DisconChance} = ps_bench_config_manager:fetch_device_disconnect_info(DeviceType),
+    {ok, DisconPeriodMs, DisconChance} = psmark_config_manager:fetch_device_disconnect_info(DeviceType),
 
     % Make sure we have a non-zero period
     case DisconPeriodMs of 
@@ -189,7 +189,7 @@ start_disconnection_loop(DeviceType, ClientName) ->
 
 disconnect_loop(ClientName, DisconChance) ->
     % Check to see if we should reconnect
-    case ps_bench_utils:evaluate_uniform_chance(DisconChance) of
+    case psmark_utils:evaluate_uniform_chance(DisconChance) of
         true ->
             gen_server:call(ClientName, disconnect);
         false ->
@@ -198,7 +198,7 @@ disconnect_loop(ClientName, DisconChance) ->
 
 start_reconnection_loop(DeviceType, ClientName) ->
     % Lookup needed parameters
-    {ok, ReconPeriodMs, ReconChance} = ps_bench_config_manager:fetch_device_reconnect_info(DeviceType),
+    {ok, ReconPeriodMs, ReconChance} = psmark_config_manager:fetch_device_reconnect_info(DeviceType),
 
     % Make sure we have a non-zero period
     case ReconPeriodMs of 
@@ -211,7 +211,7 @@ start_reconnection_loop(DeviceType, ClientName) ->
 
 reconnect_loop(ClientName, ReconnectChance) ->
     % Check to see if we should reconnect
-    case ps_bench_utils:evaluate_uniform_chance(ReconnectChance) of
+    case psmark_utils:evaluate_uniform_chance(ReconnectChance) of
         true ->
             case gen_server:call(ClientName, reconnect) of
                 {ok, new_connection} ->
@@ -241,7 +241,7 @@ resub_to_previous_topics(ClientName) ->
     end.
 
 terminate(Reason, _State = #{test_name := TestName, client_name := ClientName}) ->
-    ps_bench_utils:log_message("DDS adapter terminating. reason=~p test=~p client=~p~n",
+    psmark_utils:log_message("DDS adapter terminating. reason=~p test=~p client=~p~n",
               [Reason, TestName, ClientName]),
     ok.
 
@@ -272,7 +272,7 @@ retrieve_or_create_participant(NifModule, DomainId, ConfigFile) ->
         undefined ->
             ok = persistent_term:put({?MODULE, participant, DomainId}, creating),
 
-            {ok, QoSProfile} = ps_bench_config_manager:fetch_dds_qos_profile(),
+            {ok, QoSProfile} = psmark_config_manager:fetch_dds_qos_profile(),
 
             % Do creation and update with participant reference
             case NifModule:create_participant(DomainId, ConfigFile, QoSProfile) of 
@@ -280,7 +280,7 @@ retrieve_or_create_participant(NifModule, DomainId, ConfigFile) ->
                     ok = persistent_term:put({?MODULE, participant, DomainId}, Participant),
                     {ok, Participant};
                 Error ->
-                    ps_bench_utils:log_message("ERROR: Failed to create DDS participant with error ~p", [Error]),
+                    psmark_utils:log_message("ERROR: Failed to create DDS participant with error ~p", [Error]),
                     Error
             end;
         % Retrieve if it already exists
@@ -294,13 +294,13 @@ do_connect(NifModule, ClientName, Participant, Publisher, State) ->
     case Publisher of
         undefined ->
             % Create the publisher for this client
-            {ok, QoSProfile} = ps_bench_config_manager:fetch_dds_qos_profile(),
-            {ok, NodeName} = ps_bench_config_manager:fetch_node_name(),
+            {ok, QoSProfile} = psmark_config_manager:fetch_dds_qos_profile(),
+            {ok, NodeName} = psmark_config_manager:fetch_node_name(),
             {ok, NewPublisher} = NifModule:create_publisher_on_topic(?DDS_TOPIC, Participant, QoSProfile, atom_to_list(NodeName)),
 
             % We've connected at this point, save data
             TimeNs = erlang:system_time(nanosecond),
-            ps_bench_store:record_connect(ClientName, TimeNs),
+            psmark_store:record_connect(ClientName, TimeNs),
             {reply, {ok, new_connection}, State#{publisher := NewPublisher}};
         _ ->
             % We're fine, do nothing
@@ -326,4 +326,4 @@ do_disconnect(NifModule, ClientName, Participant, Publisher, Subscriber) ->
             NifModule:delete_subscriber(Participant, Subscriber)
     end,
     TimeNs = erlang:system_time(nanosecond),
-    ps_bench_store:record_disconnect(ClientName, TimeNs, expected).
+    psmark_store:record_disconnect(ClientName, TimeNs, expected).

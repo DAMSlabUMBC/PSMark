@@ -1,4 +1,4 @@
--module(ps_bench_default_dds_interface).
+-module(psmark_default_dds_interface).
 
 -export([init/1, create_participant/3, create_subscriber_on_topic/5, create_publisher_on_topic/4, publish_message/3, delete_subscriber/2, delete_publisher/2]).
 

@@ -1,7 +1,7 @@
--module(ps_bench_node_manager).
+-module(psmark_node_manager).
 -behaviour(gen_server).
 
--include("ps_bench_config.hrl").
+-include("psmark_config.hrl").
 
 %% public
 -export([start_link/1]).
@@ -28,14 +28,14 @@ handle_call(_Msg, _From, State) ->
     {reply, ok, State}.   
 
 handle_cast(local_continue, State = #{node_name := RawNodeName}) ->
-    NodeName = ps_bench_utils:convert_to_atom(RawNodeName),
-    ps_bench_lifecycle:current_step_complete(NodeName),
+    NodeName = psmark_utils:convert_to_atom(RawNodeName),
+    psmark_lifecycle:current_step_complete(NodeName),
     {noreply, State};
 
 handle_cast(global_continue, State = #{node_name := RawNodeName}) ->
-    NodeName = ps_bench_utils:convert_to_atom(RawNodeName),
-    {ok, Nodes} = ps_bench_config_manager:fetch_node_list(),
-    rpc:multicall(Nodes, ps_bench_lifecycle, current_step_complete, [NodeName]),
+    NodeName = psmark_utils:convert_to_atom(RawNodeName),
+    {ok, Nodes} = psmark_config_manager:fetch_node_list(),
+    rpc:multicall(Nodes, psmark_lifecycle, current_step_complete, [NodeName]),
     {noreply, State};
 
 handle_cast(_Other, State) ->
@@ -43,7 +43,7 @@ handle_cast(_Other, State) ->
 
 handle_info({Pid, Command}, State) ->
     % Make sure pid is of this node's lifecycle fsm
-    LifecyclePid = whereis(ps_bench_lifecycle),
+    LifecyclePid = whereis(psmark_lifecycle),
     case Pid =:= LifecyclePid of
         true -> 
             case handle_next_step_command(Command) of
@@ -54,34 +54,34 @@ handle_info({Pid, Command}, State) ->
     end.
 
 handle_next_step_command(start_connections) ->
-    ps_bench_utils:log_state_change("Establishing Connections"),
+    psmark_utils:log_state_change("Establishing Connections"),
 
     % Find all other nodes
-    {ok, NodeList} = ps_bench_config_manager:fetch_node_list(),
+    {ok, NodeList} = psmark_config_manager:fetch_node_list(),
     CurrentNode = node(),
     OtherNodes = lists:delete(CurrentNode, NodeList),
     case wait_for_nodes_to_connect(OtherNodes) of
         ok ->
-            ps_bench_store:initialize_mnesia_storage(NodeList),
+            psmark_store:initialize_mnesia_storage(NodeList),
             gen_server:cast(?MODULE, global_continue);
         {error, Reason} ->
             {error, Reason}
     end;
 
 handle_next_step_command(start_initialization) ->
-    ps_bench_utils:log_state_change("Initializing Benchmark Node"),
+    psmark_utils:log_state_change("Initializing Benchmark Node"),
 
     % Initialize random number generator
     initialize_rng_seed(),
 
     % Create storage tables
-    ok = ps_bench_store:initialize_node_storage(),
+    ok = psmark_store:initialize_node_storage(),
 
     % Now initalize the scenario
-    ok = ps_bench_scenario_manager:initialize_scenario(),
+    ok = psmark_scenario_manager:initialize_scenario(),
 
     % Finally initialize the metric plugins
-    ps_bench_metrics_manager:initialize_plugins(),
+    psmark_metrics_manager:initialize_plugins(),
 
     % Ready to start when other nodes are synced
     gen_server:cast(?MODULE, global_continue),
@@ -91,60 +91,46 @@ handle_next_step_command(start_initialization) ->
 handle_next_step_command(start_benchmark) ->
 
     % Start hardware polling if we're using it
-    case ps_bench_config_manager:using_hw_poll() of
+    case psmark_config_manager:using_hw_poll() of
         true ->
-            gen_server:call(ps_bench_metrics_hw_stats_reader, start_polling);
+            gen_server:call(psmark_metrics_hw_stats_reader, start_polling);
         false ->
             ok
     end,
 
     % Start the scenario
-    ps_bench_scenario_manager:run_scenario(),
+    psmark_scenario_manager:run_scenario(),
     ok;
 
 handle_next_step_command(finalize_scenario) ->
 
     % Stop hardware polling if we're using it
-    case ps_bench_config_manager:using_hw_poll() of
+    case psmark_config_manager:using_hw_poll() of
         true ->
-            gen_server:call(ps_bench_metrics_hw_stats_reader, stop_polling);
+            gen_server:call(psmark_metrics_hw_stats_reader, stop_polling);
         false ->
             ok
     end,
 
-    ps_bench_scenario_manager:clean_up_scenario(),
-    ps_bench_store:store_aggregate_publish_results_in_mnesia(),
+    psmark_scenario_manager:clean_up_scenario(),
+    psmark_store:store_aggregate_publish_results_in_mnesia(),
     gen_server:cast(?MODULE, global_continue),
     ok;
 
 handle_next_step_command(start_calculate_metrics) ->
-    ps_bench_utils:log_state_change("Starting Metric Calc"),
+    psmark_utils:log_state_change("Starting Metric Calc"),
     
     % Wait for final messages
     timer:sleep(2000),
 
-    ps_bench_metrics_manager:run_metric_calculations(),
-    
-    % Write local metrics first
-    % ps_bench_metrics_rollup:write_csv(),
-    
-    % % If primary node, aggregate from all nodes
-    % case is_primary_node() of
-    %     true ->
-    %         ps_bench_utils:log_message("Primary node: aggregating metrics from all nodes"),
-    %         ps_bench_metrics_aggregator:aggregate_metrics();
-    %     false ->
-    %         ps_bench_utils:log_message("Secondary node: skipping aggregation"),
-    %         ok
-    % end,
+    psmark_metrics_manager:run_metric_calculations(),
     
     gen_server:cast(?MODULE, global_continue),
     ok;
 
 handle_next_step_command(start_clean_up) ->
-    ps_bench_utils:log_state_change("Starting Cleanup"),
-    % ps_bench_metrics_rollup:write_csv(),
-    ps_bench_app:stop_benchmark_application(),
+    psmark_utils:log_state_change("Starting Cleanup"),
+    psmark_app:stop_benchmark_application(),
     ok.
 
 terminate(_Reason, _State) -> ok.
@@ -154,7 +140,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 is_primary_node() ->
     % We call ourselves primary if we're the first in the scenario config list
-    {ok, [PrimaryNode | _]} = ps_bench_config_manager:fetch_node_list(),
+    {ok, [PrimaryNode | _]} = psmark_config_manager:fetch_node_list(),
     (PrimaryNode =:= node()).
 
 %%%===================================================================
@@ -163,7 +149,7 @@ is_primary_node() ->
 setup_benchmark() ->
 
     % Register this node
-    {ok, NodeName} = ps_bench_config_manager:fetch_node_name(),
+    {ok, NodeName} = psmark_config_manager:fetch_node_name(),
     _ = ensure_distribution(NodeName),
     erlang:set_cookie(node(), ?PS_BENCH_COOKIE),
 
@@ -173,7 +159,7 @@ setup_benchmark() ->
 ensure_distribution(NodeName0) ->
     case node() of
         nonode@nohost ->
-            NodeName = ps_bench_utils:convert_to_atom(NodeName0),
+            NodeName = psmark_utils:convert_to_atom(NodeName0),
             DistMode = case os:getenv("ERLANG_DIST_MODE") of
                 "longnames" -> longnames;
                 "name" -> longnames;
@@ -183,7 +169,7 @@ ensure_distribution(NodeName0) ->
                 {ok, _Pid}                       -> ok;
                 {error, {already_started, _Pid}} -> ok;
                 {error, Reason} ->
-                    ps_bench_utils:log_message(
+                    psmark_utils:log_message(
                       "WARNING: distribution not started (~p). Running local-only.", [Reason]),
                     ok
             end;
@@ -195,13 +181,13 @@ wait_for_nodes_to_connect([]) ->
     ok;
 
 wait_for_nodes_to_connect([NextNode | OtherNodes]) ->
-    ps_bench_utils:log_message("Attempting to connect to ~p", [NextNode]),
+    psmark_utils:log_message("Attempting to connect to ~p", [NextNode]),
     case wait_for_node_to_connect(NextNode, 30) of
         timeout ->
             Reason = io_lib:format("Failed to connect to node ~s", [NextNode]),
             {error, Reason};
         ok ->
-            ps_bench_utils:log_message("Connected to ~p", [NextNode]),
+            psmark_utils:log_message("Connected to ~p", [NextNode]),
             wait_for_nodes_to_connect(OtherNodes)
     end.
 
@@ -222,12 +208,12 @@ wait_for_node_to_connect(Node, RetryCount) ->
 
 initialize_rng_seed() ->
     % Need to check if we have one in config or if we need to make a new one
-    {ok, NodeName} = ps_bench_config_manager:fetch_node_name(),
-    case ps_bench_config_manager:fetch_rng_seed_for_node(NodeName) of
+    {ok, NodeName} = psmark_config_manager:fetch_node_name(),
+    case psmark_config_manager:fetch_rng_seed_for_node(NodeName) of
         {ok, Seed} ->
             % Use configured seed
-            ps_bench_utils:initialize_rng_seed(Seed);
+            psmark_utils:initialize_rng_seed(Seed);
         {error, unknown_property} ->
             % Generate a new seed
-            ps_bench_utils:initialize_rng_seed()
+            psmark_utils:initialize_rng_seed()
     end.

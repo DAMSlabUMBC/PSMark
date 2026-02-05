@@ -18,9 +18,9 @@
     {protocol_config,
     [
         {domain_id, 1},
-		{qos_profile, "/app/configs/dds_configs/qos#PsBenchHighProfile"},
-	    {nif_full_path, "/app/priv/dds_cplusplus/lib/libps_bench_default_dds_interface"},
-        {config_file, "/app/configs/dds_configs/ps_bench_default_dds_interface.ini"}
+		{qos_profile, "/app/configs/dds_configs/qos#PSMarkHighProfile"},
+	    {nif_full_path, "/app/priv/dds_cplusplus/lib/libpsmark_default_dds_interface"},
+        {config_file, "/app/configs/dds_configs/psmark_default_dds_interface.ini"}
 		
     ]},
     
@@ -30,9 +30,9 @@
         {hw_stats_poll_period_ms, 1000},
         {metric_plugins, 
         [
-            {ps_bench_throughput_calc_plugin, erlang},
-            {ps_bench_latency_calc_plugin, erlang},
-            {ps_bench_dropped_message_calc_plugin, erlang}
+            {psmark_throughput_calc_plugin, erlang},
+            {psmark_latency_calc_plugin, erlang},
+            {psmark_dropped_message_calc_plugin, erlang}
         ]}
     ]}
 ].

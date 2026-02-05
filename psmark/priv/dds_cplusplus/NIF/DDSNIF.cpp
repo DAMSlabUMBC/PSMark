@@ -7,8 +7,8 @@
 #include <ace/Arg_Shifter.h>
 
 #include <erl_nif.h>
-#include <PsBenchTypeSupportImpl.h>
-#include <PsBenchC.h>
+#include <PSMarkTypeSupportImpl.h>
+#include <PSMarkC.h>
 #include "DataReaderListenerImpl.h"
 
 #include <string>
@@ -31,7 +31,7 @@ typedef struct
 typedef struct 
 {
     DDS::Publisher_ptr publisher;
-    PsBench::DeviceMessageDataWriter_ptr writer;
+    PSMark::DeviceMessageDataWriter_ptr writer;
     char* nodeId;
 } PublisherStruct;
 
@@ -224,9 +224,9 @@ ERL_NIF_TERM create_participant(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
     if (0 == participant) 
         return enif_make_atom(env, "participant_failed");
 
-    // Register PsBench type
-    PsBench::DeviceMessageTypeSupport_var ts =
-        new PsBench::DeviceMessageTypeSupportImpl();
+    // Register PSMark type
+    PSMark::DeviceMessageTypeSupport_var ts =
+        new PSMark::DeviceMessageTypeSupportImpl();
 
     if (ts->register_type(participant.in(), "") != DDS::RETCODE_OK) 
         return enif_make_atom(env, "type_registration_failed");
@@ -342,8 +342,8 @@ ERL_NIF_TERM create_subscriber_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_
     }
 
     // create topic
-    PsBench::DeviceMessageTypeSupport_var ts =
-            new PsBench::DeviceMessageTypeSupportImpl();
+    PSMark::DeviceMessageTypeSupport_var ts =
+            new PSMark::DeviceMessageTypeSupportImpl();
     CORBA::String_var type_name = ts->get_type_name();
     DDS::Topic_var topic =
         participantStruct->participant->create_topic(topicName,
@@ -516,8 +516,8 @@ ERL_NIF_TERM create_publisher_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_T
     }
 
     // create topic
-    PsBench::DeviceMessageTypeSupport_var ts =
-            new PsBench::DeviceMessageTypeSupportImpl();
+    PSMark::DeviceMessageTypeSupport_var ts =
+            new PSMark::DeviceMessageTypeSupportImpl();
     CORBA::String_var type_name = ts->get_type_name();
     DDS::Topic_var topic =
         participantStruct->participant->create_topic(topicName,
@@ -548,8 +548,8 @@ ERL_NIF_TERM create_publisher_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_T
     if (0 == writer) 
         return enif_make_atom(env, "datawriter_creation_failed");
 
-    PsBench::DeviceMessageDataWriter_var message_writer =
-        PsBench::DeviceMessageDataWriter::_narrow(writer.in());
+    PSMark::DeviceMessageDataWriter_var message_writer =
+        PSMark::DeviceMessageDataWriter::_narrow(writer.in());
 
     if (0 == message_writer) 
         return enif_make_atom(env, "datawriter_narrow_failed");
@@ -632,7 +632,7 @@ ERL_NIF_TERM publish_message(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
 
     if(publisherStruct->publisher != 0)
     {
-        PsBench::DeviceMessage message;
+        PSMark::DeviceMessage message;
         message.seq_id = seqId;
         message.payload.length(messageData.size);
         for(size_t i = 0; i < messageData.size; i++)
@@ -662,4 +662,4 @@ static ErlNifFunc nif_funcs[] = {
     {"delete_publisher", 2, delete_publisher}
 };
 
-ERL_NIF_INIT(ps_bench_default_dds_interface, nif_funcs, &load, &reload, &upgrade, &unload);
+ERL_NIF_INIT(psmark_default_dds_interface, nif_funcs, &load, &reload, &upgrade, &unload);

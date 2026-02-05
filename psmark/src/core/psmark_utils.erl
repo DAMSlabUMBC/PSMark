@@ -1,6 +1,6 @@
--module(ps_bench_utils).
+-module(psmark_utils).
 
--include("ps_bench_config.hrl").
+-include("psmark_config.hrl").
 
 %% public
 -export([initialize_rng_seed/0, initialize_rng_seed/1, generate_mqtt_payload_data/3,
@@ -80,7 +80,7 @@ generate_mqtt_payload_data(PayloadSizeMean, PayloadSizeVariance, Topic) ->
     IntSize = erlang:round(FloatSize),
 
     % Get publisher ID (node name for now)
-    {ok, PublisherID} = ps_bench_config_manager:fetch_node_name(),
+    {ok, PublisherID} = psmark_config_manager:fetch_node_name(),
     PublisherBin = atom_to_binary(PublisherID, utf8),
     PublisherSize = byte_size(PublisherBin),
 
@@ -97,7 +97,7 @@ generate_mqtt_payload_data(PayloadSizeMean, PayloadSizeVariance, Topic) ->
     %       add processing time for the benchmark to the latency results.
     %       This function intentionally generates a payload 8 bytes too "small" 
     %       to allow for the interface to add the time data
-    Seq = ps_bench_store:get_next_seq_id(Topic),
+    Seq = psmark_store:get_next_seq_id(Topic),
     Payload = <<Seq:64/unsigned, PublisherSize:16/unsigned, PublisherBin/binary, RandomBytes/binary>>,
     {Seq, Payload}.
 
@@ -110,7 +110,7 @@ generate_dds_datatype_data(PayloadSizeMean, PayloadSizeVariance) ->
     RandomBytes = crypto:strong_rand_bytes(IntSize),
 
     % Calculate sequence number.
-    Seq = ps_bench_store:get_next_seq_id(?DDS_TOPIC),
+    Seq = psmark_store:get_next_seq_id(?DDS_TOPIC),
     {Seq, RandomBytes}.
 
 evaluate_uniform_chance(ChanceOfEvent) when 0.0 =< ChanceOfEvent, ChanceOfEvent =< 1.0 ->
@@ -166,7 +166,7 @@ log_message(Message) ->
     log_message(Message, []).
 
 log_message(Message, Args) ->
-    {ok, NodeName} = ps_bench_config_manager:fetch_node_name(),
+    {ok, NodeName} = psmark_config_manager:fetch_node_name(),
     FormattedMessage = io_lib:format(Message, Args),
     {{_,_,_},{Hour,Min,Sec}} = erlang:localtime(),
     io:format("[~p - ~p:~p:~p] ~s~n", [NodeName, Hour, Min, Sec, FormattedMessage]).
@@ -175,7 +175,7 @@ log_state_change(Message) ->
     log_state_change(Message, []).
 
 log_state_change(Message, Args) ->
-    {ok, NodeName} = ps_bench_config_manager:fetch_node_name(),
+    {ok, NodeName} = psmark_config_manager:fetch_node_name(),
     FormattedMessage = io_lib:format(Message, Args),
     {{_,_,_},{Hour,Min,Sec}} = erlang:localtime(),
     io:format("[~p - ~p:~p:~p] === ~s ===~n", [NodeName, Hour, Min, Sec, FormattedMessage]).

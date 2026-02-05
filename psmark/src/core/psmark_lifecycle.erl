@@ -1,4 +1,4 @@
--module(ps_bench_lifecycle).
+-module(psmark_lifecycle).
 -behaviour(gen_statem).
 
 % Process managment callbacks
@@ -41,7 +41,7 @@ configuring(cast, _NodeName, Data) ->
 
 % Instruct the manager to start connecting to other known nodes
 connecting(enter, _OldState, _State) ->
-    ManagerPid = whereis(ps_bench_node_manager),
+    ManagerPid = whereis(psmark_node_manager),
     ManagerPid ! {self(), start_connections},
     keep_state_and_data;
 
@@ -50,7 +50,7 @@ connecting(cast, NodeName, #{all_nodes := AllNodes, pending_nodes := PendingNode
 
 % Instruct the manager to initialize the tests
 initializing(enter, _OldState, _State) ->
-    ManagerPid = whereis(ps_bench_node_manager),
+    ManagerPid = whereis(psmark_node_manager),
     ManagerPid ! {self(), start_initialization},
     keep_state_and_data;
 
@@ -60,7 +60,7 @@ initializing(cast, NodeName, #{all_nodes := AllNodes, pending_nodes := PendingNo
 
 % Instruct the manager to start benchmarking
 benchmarking(enter, _OldState, _State) ->
-    ManagerPid = whereis(ps_bench_node_manager),
+    ManagerPid = whereis(psmark_node_manager),
     ManagerPid ! {self(), start_benchmark},
     keep_state_and_data;
 
@@ -70,7 +70,7 @@ benchmarking(cast, NodeName, #{all_nodes := AllNodes, pending_nodes := PendingNo
 
 % Instruct the manager to clean up the benchmarking objects
 finalizing(enter, _OldState, _State) ->
-    ManagerPid = whereis(ps_bench_node_manager),
+    ManagerPid = whereis(psmark_node_manager),
     ManagerPid ! {self(), finalize_scenario},
     keep_state_and_data;
 
@@ -80,7 +80,7 @@ finalizing(cast, NodeName, #{all_nodes := AllNodes, pending_nodes := PendingNode
 
 % Instruct the manager to start metric calculation
 calculating_metrics(enter, _OldState, _State) ->
-    ManagerPid = whereis(ps_bench_node_manager),
+    ManagerPid = whereis(psmark_node_manager),
     ManagerPid ! {self(), start_calculate_metrics},
     keep_state_and_data;
 
@@ -90,7 +90,7 @@ calculating_metrics(cast, NodeName, #{all_nodes := AllNodes, pending_nodes := Pe
 
 % The only thing we do in this state is instruct the manager to shutdown the benchmark
 done(enter, _OldState, _State) ->
-    ManagerPid = whereis(ps_bench_node_manager),
+    ManagerPid = whereis(psmark_node_manager),
     ManagerPid ! {self(), start_clean_up},
     keep_state_and_data;
 

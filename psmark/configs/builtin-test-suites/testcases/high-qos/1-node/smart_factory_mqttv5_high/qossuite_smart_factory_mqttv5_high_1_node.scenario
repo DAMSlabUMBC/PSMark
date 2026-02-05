@@ -27,9 +27,9 @@
         {hw_stats_poll_period_ms, 1000},
         {metric_plugins, 
         [
-            {ps_bench_throughput_calc_plugin, erlang},
-            {ps_bench_latency_calc_plugin, erlang},
-            {ps_bench_dropped_message_calc_plugin, erlang}
+            {psmark_throughput_calc_plugin, erlang},
+            {psmark_latency_calc_plugin, erlang},
+            {psmark_dropped_message_calc_plugin, erlang}
         ]}
     ]}
 ].

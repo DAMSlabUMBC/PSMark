@@ -8,14 +8,14 @@
 
 #include <erl_nif.h>
 
-#include <PsBenchTypeSupportC.h>
-#include <PsBenchTypeSupportImpl.h>
+#include <PSMarkTypeSupportC.h>
+#include <PSMarkTypeSupportImpl.h>
 
 #ifdef __GNUC__
 #include <tr1/memory>
 #endif
 
-typedef std::tr1::shared_ptr<PsBench::DeviceMessage> MessageType;
+typedef std::tr1::shared_ptr<PSMark::DeviceMessage> MessageType;
 
 class DataReaderListenerImpl
   : public virtual OpenDDS::DCPS::LocalObject<DDS::DataReaderListener> {

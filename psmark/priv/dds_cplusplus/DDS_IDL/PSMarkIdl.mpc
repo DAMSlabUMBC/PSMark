@@ -1,6 +1,6 @@
 project(DDS_IDL) : dcps {
 	TypeSupport_Files {
-		PsBench.idl
+		PSMark.idl
 	}
 	
 	custom_only = 1

@@ -36,8 +36,8 @@ void
 void
     DataReaderListenerImpl::on_data_available(DDS::DataReader_ptr reader)
 {
-    PsBench::DeviceMessageDataReader_var reader_i =
-        PsBench::DeviceMessageDataReader::_narrow(reader);
+    PSMark::DeviceMessageDataReader_var reader_i =
+        PSMark::DeviceMessageDataReader::_narrow(reader);
 
     if (CORBA::is_nil(reader_i.in())) {
         ACE_ERROR((LM_ERROR,
@@ -46,7 +46,7 @@ void
         ACE_OS::exit(-1);
     }
 
-    MessageType message(new PsBench::DeviceMessage);
+    MessageType message(new PSMark::DeviceMessage);
     DDS::SampleInfo info;
 
     DDS::ReturnCode_t error = reader_i->take_next_sample(*message, info);

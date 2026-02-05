@@ -1,6 +1,6 @@
--module(ps_bench_store).
+-module(psmark_store).
 
--include("ps_bench_config.hrl").
+-include("psmark_config.hrl").
 
 -export([initialize_node_storage/0, initialize_mnesia_storage/1]).
 %% seq mgmt
@@ -45,12 +45,12 @@ get_next_seq_id(Topic) ->
 
 %% Create mnesia schema and start mnesia
 initialize_mnesia_storage(Nodes) ->
-    case ps_bench_node_manager:is_primary_node() of
+    case psmark_node_manager:is_primary_node() of
         true ->
-            ps_bench_utils:log_message("Initializing mnesia schema on ~p. You may see an exit call for mnesia, this is fine.", [Nodes]),
+            psmark_utils:log_message("Initializing mnesia schema on ~p. You may see an exit call for mnesia, this is fine.", [Nodes]),
             rpc:multicall(Nodes, application, stop, [mnesia]),
             mnesia:create_schema(Nodes),
-            ps_bench_utils:log_message("Attempting to restart mnesia database on ~p.", [Nodes]),
+            psmark_utils:log_message("Attempting to restart mnesia database on ~p.", [Nodes]),
             {_Results, _BadNodes} = rpc:multicall(Nodes, application, start, [mnesia]),
             
             % Wait for all nodes to report mnesia is started
@@ -64,7 +64,7 @@ initialize_mnesia_storage(Nodes) ->
             % This is the critical fix - ensure ALL nodes know about each other
             % rpc:multicall(Nodes, mnesia, change_config, [extra_db_nodes, Nodes]),
             
-            ps_bench_utils:log_message("Creating mnesia tables on ~p", [Nodes]),
+            psmark_utils:log_message("Creating mnesia tables on ~p", [Nodes]),
             mnesia:delete_table(?PUB_AGG_RECORD_NAME),
             mnesia:create_table(?PUB_AGG_RECORD_NAME, [
                 {type, bag}, 
@@ -73,7 +73,7 @@ initialize_mnesia_storage(Nodes) ->
             ]),
             wait_for_tables();
         false ->
-            ps_bench_utils:log_message("Waiting for mnesia tables to initialize. You may see an exit call for mnesia, this is fine.", []),
+            psmark_utils:log_message("Waiting for mnesia tables to initialize. You may see an exit call for mnesia, this is fine.", []),
             wait_for_tables()
     end.
 
@@ -158,7 +158,7 @@ ensure_tables() ->
 %% #{topic=>Topic, seq=>Seq|undefined, t_pub_ns=>TPub|undefined, t_recv_ns=>TRecv, bytes=>Bytes}
 record_recv(RecvClientName, TopicBin, Seq, TPubNs, TRecvNs, Bytes, PublisherID) ->
     ensure_tables(),
-    {ok, NodeName} = ps_bench_config_manager:fetch_node_name(),
+    {ok, NodeName} = psmark_config_manager:fetch_node_name(),
     Event = {NodeName, RecvClientName, PublisherID, TopicBin, Seq, TPubNs, TRecvNs, Bytes},
     ets:insert(?T_RECV_EVENTS, Event),
     ok.
@@ -169,7 +169,7 @@ record_recv(ClientName, TopicBin, Seq, TPubNs, TRecvNs, Bytes) ->
 
 record_publish(ClientName, Topic, Seq) ->
     ensure_tables(),
-    {ok, NodeName} = ps_bench_config_manager:fetch_node_name(),
+    {ok, NodeName} = psmark_config_manager:fetch_node_name(),
     Event = {NodeName, ClientName, Topic, Seq},
     ets:insert(?T_PUBLISH_EVENTS, Event),
     ok.
@@ -185,7 +185,7 @@ record_connect(ClientName, TimeNs) ->
     %                   ets:delete(?T_RECVSEQ, K);
     %                  (_) -> ok 
     %               end, AllKeys),
-    % ps_bench_utils:log_message("Client ~p connected at ~p", [ClientName, TimeNs]),
+    % psmark_utils:log_message("Client ~p connected at ~p", [ClientName, TimeNs]),
     ok.
 
 record_disconnect(ClientName, TimeNs, Type) ->
@@ -275,7 +275,7 @@ store_aggregate_publish_results_in_mnesia() ->
 
     % Store in mnesia
     F = fun() ->
-        {ok, NodeName} = ps_bench_config_manager:fetch_node_name(),
+        {ok, NodeName} = psmark_config_manager:fetch_node_name(),
         mnesia:write(#?PUB_AGG_RECORD_NAME{node_name=NodeName, binary_aggregate=ResultsBinary})
     end,
     ok = mnesia:activity(transaction, F).

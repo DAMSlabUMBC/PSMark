@@ -62,9 +62,9 @@
 -define(MQTT_REQ_KEY_LIST, [?MQTT_BROKER_IP_PROP, ?MQTT_BROKER_PORT_PROP]).
 
 % MQTT constants
--define(MQTT_DEFAULT_CLIENT_INTERFACE_MODULE, ps_bench_default_mqtt_interface).
+-define(MQTT_DEFAULT_CLIENT_INTERFACE_MODULE, psmark_default_mqtt_interface).
 -define(MQTT_DEFAULT_QOS_PROP, default_qos).
--define(MQTT_TOPIC_PREFIX, <<"ps_bench/device/">>).
+-define(MQTT_TOPIC_PREFIX, <<"psmark/device/">>).
 
 % DDS protocol_config fields
 -define(DDS_NIF_MODULE_PROP, nif_module).
@@ -77,11 +77,11 @@
 -define(DDS_REQ_KEY_LIST, [?DDS_DOMAIN_ID_PROP]).
 
 % DDS constants
--define(DDS_DEFAULT_NIF_MODULE, ps_bench_default_dds_interface).
--define(DDS_DEFAULT_NIF_FULL_PATH, "priv/dds_cplusplus/lib/libps_bench_default_dds_interface").
--define(DDS_DEFAULT_CONFIG_FILE_PATH, "configs/dds_configs/ps_bench_default_dds_interface.ini").
+-define(DDS_DEFAULT_NIF_MODULE, psmark_default_dds_interface).
+-define(DDS_DEFAULT_NIF_FULL_PATH, "priv/dds_cplusplus/lib/libpsmark_default_dds_interface").
+-define(DDS_DEFAULT_CONFIG_FILE_PATH, "configs/dds_configs/psmark_default_dds_interface.ini").
 -define(DDS_DEFAULT_PROFILE, ""). % Intentionally empty
--define(DDS_TOPIC, "PS_BENCH_TOPIC").
+-define(DDS_TOPIC, "PSMARK_TOPIC").
 
 % Interface types for reference
 -define(PYTHON_INTERFACE, python).

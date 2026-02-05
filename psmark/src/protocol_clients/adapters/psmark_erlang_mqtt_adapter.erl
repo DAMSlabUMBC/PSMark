@@ -1,7 +1,7 @@
--module(ps_bench_erlang_mqtt_adapter).
+-module(psmark_erlang_mqtt_adapter).
 -behaviour(gen_server).
 
--include("ps_bench_config.hrl").
+-include("psmark_config.hrl").
 
 -define(SUBSCRIPTION_ETS_TABLE_NAME, current_mqtt_subscriptions).
 
@@ -30,8 +30,8 @@ start_link(TestName, InterfaceName, ClientName, DeviceType) ->
 
 init([TestName, InterfaceName, ClientName, DeviceType]) ->
     %% Normalize names
-    ServerMod  = ps_bench_utils:convert_to_atom(InterfaceName),
-    ServerName = ps_bench_utils:convert_to_atom(ClientName),
+    ServerMod  = psmark_utils:convert_to_atom(InterfaceName),
+    ServerName = psmark_utils:convert_to_atom(ClientName),
 
     %% Start the interface process and always use the registered name
     {ok, _Pid} = ServerMod:start_link(TestName, ServerName, self()),
@@ -82,7 +82,7 @@ handle_call({publish, Topic, Seq, Data, PubOpts}, _From, State = #{server_refere
     {ok, Result} = gen_server:call(ServerReference, {publish, #{}, Topic, Data, PubOpts}),
     case Result of 
         published ->
-            ps_bench_store:record_publish(ServerReference, Topic, Seq);
+            psmark_store:record_publish(ServerReference, Topic, Seq);
         not_connected ->
             % This isn't an error, it just means we didn't publish
             ok
@@ -139,16 +139,16 @@ handle_cast(stop, State = #{server_reference := ServerReference, pub_task := Pub
     {noreply, State}.
 
 handle_info({?CONNECTED_MSG, {TimeNs}, ClientName}, State) ->
-    ps_bench_store:record_connect(ClientName, TimeNs),
+    psmark_store:record_connect(ClientName, TimeNs),
     {noreply, State};
 
 handle_info({?DISCONNECTED_MSG, {TimeNs, Reason}, ClientName}, State) ->
     case Reason of 
         normal ->
-            ps_bench_store:record_disconnect(ClientName, TimeNs, expected),
+            psmark_store:record_disconnect(ClientName, TimeNs, expected),
             {noreply, State};
         _ ->
-            ps_bench_store:record_disconnect(ClientName, TimeNs, unexpected),
+            psmark_store:record_disconnect(ClientName, TimeNs, unexpected),
             {noreply, State}
     end;
 
@@ -158,16 +158,16 @@ handle_info({?PUBLISH_RECV_MSG, {RecvTimeNs, Topic, Payload}, ClientName}, State
     
     % Try to decode with publisher ID
     {Seq, PubTimeNs, PublisherID, _Rest} = 
-        case ps_bench_utils:decode_seq_header_with_publisher(Payload) of
+        case psmark_utils:decode_seq_header_with_publisher(Payload) of
             {S, T, P, R} -> {S, T, P, R};
             _ -> 
                 % Fallback to old format
-                {S, T, R} = ps_bench_utils:decode_seq_header(Payload),
+                {S, T, R} = psmark_utils:decode_seq_header(Payload),
                 {S, T, unknown, R}
         end,
     
     % Updated call with PublisherID
-    ps_bench_store:record_recv(ClientName, Topic, Seq, PubTimeNs, RecvTimeNs, Bytes, PublisherID),
+    psmark_store:record_recv(ClientName, Topic, Seq, PubTimeNs, RecvTimeNs, Bytes, PublisherID),
     {noreply, State};
 
 handle_info(_Info, State) ->
@@ -177,9 +177,9 @@ do_subscribe(_Topics, ServerReference, Tid) ->
 
     % Currently only support wildcarded topic
     % We will subscribe to a topic for each QoS to support multi QoS deployments
-    QoS0End = ps_bench_utils:convert_to_binary("qos_0/#"),
-    QoS1End = ps_bench_utils:convert_to_binary("qos_1/#"),
-    QoS2End = ps_bench_utils:convert_to_binary("qos_2/#"),
+    QoS0End = psmark_utils:convert_to_binary("qos_0/#"),
+    QoS1End = psmark_utils:convert_to_binary("qos_1/#"),
+    QoS2End = psmark_utils:convert_to_binary("qos_2/#"),
     QoS0Topic = <<?MQTT_TOPIC_PREFIX/binary, QoS0End/binary>>,
     QoS1Topic = <<?MQTT_TOPIC_PREFIX/binary, QoS1End/binary>>,
     QoS2Topic = <<?MQTT_TOPIC_PREFIX/binary, QoS2End/binary>>,
@@ -197,13 +197,13 @@ do_subscribe(_Topics, ServerReference, Tid) ->
 
 start_publication_loop(DeviceType, ServerReference) ->
     % Lookup needed parameters
-    {ok, PubFrequencyMs} = ps_bench_config_manager:fetch_device_publication_frequency(DeviceType),
-    {ok, PayloadSizeMean, PayloadSizeVariance} = ps_bench_config_manager:fetch_device_payload_info(DeviceType),
+    {ok, PubFrequencyMs} = psmark_config_manager:fetch_device_publication_frequency(DeviceType),
+    {ok, PayloadSizeMean, PayloadSizeVariance} = psmark_config_manager:fetch_device_payload_info(DeviceType),
 
     % Construct topic
-    {ok, QoS} = ps_bench_config_manager:fetch_mqtt_qos_for_device(DeviceType),
+    {ok, QoS} = psmark_config_manager:fetch_mqtt_qos_for_device(DeviceType),
     QoSPart = lists:flatten(io_lib:format("qos_~p/", [QoS])),
-    QoSPartBinary = ps_bench_utils:convert_to_binary(QoSPart),
+    QoSPartBinary = psmark_utils:convert_to_binary(QoSPart),
     DeviceTypeBinary = atom_to_binary(DeviceType, latin1),
     Topic = <<?MQTT_TOPIC_PREFIX/binary, QoSPartBinary/binary, DeviceTypeBinary/binary>>,
 
@@ -217,11 +217,11 @@ start_publication_loop(DeviceType, ServerReference) ->
 
 
 publication_loop(ServerReference, Topic, QoS, PayloadSizeMean, PayloadSizeVariance) ->
-    {Seq, Payload} = ps_bench_utils:generate_mqtt_payload_data(PayloadSizeMean, PayloadSizeVariance, Topic),
+    {Seq, Payload} = psmark_utils:generate_mqtt_payload_data(PayloadSizeMean, PayloadSizeVariance, Topic),
     {ok, Result} = gen_server:call(ServerReference, {publish, #{}, Topic, Payload, [{qos, QoS}]}),
     case Result of 
         published ->
-            ps_bench_store:record_publish(ServerReference, Topic, Seq);
+            psmark_store:record_publish(ServerReference, Topic, Seq);
         not_connected ->
             % This isn't an error, it just means we didn't publish
             ok
@@ -229,7 +229,7 @@ publication_loop(ServerReference, Topic, QoS, PayloadSizeMean, PayloadSizeVarian
 
 start_disconnection_loop(DeviceType, ServerReference) ->
     % Lookup needed parameters
-    {ok, DisconPeriodMs, DisconChance} = ps_bench_config_manager:fetch_device_disconnect_info(DeviceType),
+    {ok, DisconPeriodMs, DisconChance} = psmark_config_manager:fetch_device_disconnect_info(DeviceType),
 
     % Make sure we have a non-zero period
     case DisconPeriodMs of 
@@ -247,7 +247,7 @@ start_disconnection_loop(DeviceType, ServerReference) ->
 
 disconnect_loop(ServerReference, DisconChance) ->
     % Check to see if we should reconnect
-    case ps_bench_utils:evaluate_uniform_chance(DisconChance) of
+    case psmark_utils:evaluate_uniform_chance(DisconChance) of
         true ->
             gen_server:call(ServerReference, disconnect);
         false ->
@@ -256,7 +256,7 @@ disconnect_loop(ServerReference, DisconChance) ->
 
 start_reconnection_loop(DeviceType, ServerReference) ->
     % Lookup needed parameters
-    {ok, ReconPeriodMs, ReconChance} = ps_bench_config_manager:fetch_device_reconnect_info(DeviceType),
+    {ok, ReconPeriodMs, ReconChance} = psmark_config_manager:fetch_device_reconnect_info(DeviceType),
 
     % Make sure we have a non-zero period
     case ReconPeriodMs of 
@@ -273,7 +273,7 @@ start_reconnection_loop(DeviceType, ServerReference) ->
 
 reconnect_loop(ServerReference, ReconnectChance) ->
     % Check to see if we should reconnect
-    case ps_bench_utils:evaluate_uniform_chance(ReconnectChance) of
+    case psmark_utils:evaluate_uniform_chance(ReconnectChance) of
         true ->
             case gen_server:call(ServerReference, reconnect) of
                 {ok, new_connection} ->

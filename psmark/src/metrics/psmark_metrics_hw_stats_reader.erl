@@ -1,8 +1,8 @@
--module(ps_bench_metrics_hw_stats_reader).
+-module(psmark_metrics_hw_stats_reader).
 -behaviour(gen_server).
 -export([start_link/0]).
 
--include("ps_bench_config.hrl").
+-include("psmark_config.hrl").
 
 -export([init/1, handle_info/2, handle_cast/2, handle_call/3]).
 -export([poll_hw_stats/0]).
@@ -20,7 +20,7 @@ init([]) ->
       {ok, #{timer_ref => undefined}}.
 
 handle_call(start_polling, _From, State) -> 
-      {ok, PollFrequencyMs} = ps_bench_config_manager:fetch_metric_hw_poll_period(),
+      {ok, PollFrequencyMs} = psmark_config_manager:fetch_metric_hw_poll_period(),
       {ok, TRef} =
                 timer:apply_repeatedly(
                     PollFrequencyMs,
@@ -44,10 +44,10 @@ handle_call({write_stats, OutDir}, _From, State) ->
       calculate_and_write_local_stats(FullPath),
 
       % Primary node also reads broker stats
-      case ps_bench_node_manager:is_primary_node() of
+      case psmark_node_manager:is_primary_node() of
             true ->
                   % Currently only supported for MQTT
-                  {ok, ProtocolType} = ps_bench_config_manager:fetch_protocol_type(),
+                  {ok, ProtocolType} = psmark_config_manager:fetch_protocol_type(),
                   case ProtocolType of 
                         ?MQTT_V5_PROTOCOL ->
                               FullBrokerPath = filename:join(OutDir, "broker_hw_stats.csv"),
@@ -83,18 +83,18 @@ poll_hw_stats() ->
       fetch_and_store_hw_usage(Url, local),
 
       % Primary node also reads broker stats
-      case ps_bench_node_manager:is_primary_node() of
+      case psmark_node_manager:is_primary_node() of
             true ->
                   % Currently only supported for MQTT
-                  {ok, ProtocolType} = ps_bench_config_manager:fetch_protocol_type(),
+                  {ok, ProtocolType} = psmark_config_manager:fetch_protocol_type(),
                   case ProtocolType of 
                         ?MQTT_V5_PROTOCOL ->
-                              {ok, BrokerIP, _} = ps_bench_config_manager:fetch_mqtt_broker_information(),
+                              {ok, BrokerIP, _} = psmark_config_manager:fetch_mqtt_broker_information(),
                               BrokerUrl = "http://" ++ BrokerIP ++ ":9100/metrics",
                               fetch_and_store_hw_usage(BrokerUrl, broker),
                               ok;
                         ?MQTT_V311_PROTOCOL ->
-                              {ok, BrokerIP, _} = ps_bench_config_manager:fetch_mqtt_broker_information(),
+                              {ok, BrokerIP, _} = psmark_config_manager:fetch_mqtt_broker_information(),
                               BrokerUrl = "http://" ++ BrokerIP ++ ":9100/metrics",
                               fetch_and_store_hw_usage(BrokerUrl, broker),
                               ok;
@@ -153,7 +153,7 @@ parse_and_store_cpu_usage(NodeExporterResponseLines, NodeType, TimeNs) ->
                   CpuUsage = (DeltaActive / (DeltaActive + DeltaIdle)) * 100,
 
                   % Store usage metric
-                  ps_bench_store:record_cpu_usage(NodeType, CpuUsage, TimeNs)
+                  psmark_store:record_cpu_usage(NodeType, CpuUsage, TimeNs)
       end.
 
 parse_and_store_memory_usage(NodeExporterResponseLines, NodeType, TimeNs) ->
@@ -165,7 +165,7 @@ parse_and_store_memory_usage(NodeExporterResponseLines, NodeType, TimeNs) ->
       MemUsagePct = (MemUseValue / MemTotalValue) * 100,
       
       % Store usage metric
-      ps_bench_store:record_memory_usage(NodeType, MemUsagePct, TimeNs).
+      psmark_store:record_memory_usage(NodeType, MemUsagePct, TimeNs).
 
 parse_value_from_line(Line) ->
       [_, StrValue] = string:tokens(Line, " "),
@@ -188,16 +188,16 @@ calculate_hw_stats(StatType, NodeType) ->
                               local ->
                                     case StatType of 
                                           cpu ->
-                                                ps_bench_store:fetch_cpu_usage();
+                                                psmark_store:fetch_cpu_usage();
                                           memory ->
-                                                ps_bench_store:fetch_memory_usage()
+                                                psmark_store:fetch_memory_usage()
                                     end;
                               broker ->
                                     case StatType of 
                                           cpu ->
-                                                ps_bench_store:fetch_broker_cpu_usage();
+                                                psmark_store:fetch_broker_cpu_usage();
                                           memory ->
-                                                ps_bench_store:fetch_broker_memory_usage()
+                                                psmark_store:fetch_broker_memory_usage()
                                     end
                         end,
 
@@ -242,7 +242,7 @@ calculate_hw_stats(StatType, NodeType) ->
       {MinUsage, MaxUsage, AvgUsage, Variance, MedianUsage, P90Usage, P95Usage, P99Usage}.
 
 calculate_and_write_local_stats(OutFile) ->
-      {ok, NodeName} = ps_bench_config_manager:fetch_node_name(),
+      {ok, NodeName} = psmark_config_manager:fetch_node_name(),
       CPUResults = calculate_hw_stats(cpu, local),
       MemResults = calculate_hw_stats(memory, local),
       write_stats_to_file(OutFile, NodeName, CPUResults, MemResults).

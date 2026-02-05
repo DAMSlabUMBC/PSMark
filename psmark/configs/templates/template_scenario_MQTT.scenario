@@ -14,7 +14,7 @@
     
     {protocol_config,                                                       % Protocol specific configuration, see README for details on protocol configuration
     [
-        {client_interface_module, ps_bench_default_mqtt_interface},         % Defaults to: ps_bench_default_mqtt_interface
+        {client_interface_module, psmark_default_mqtt_interface},           % Defaults to: psmark_default_mqtt_interface
         {broker, REPLACE_BROKER_IP},                                        % Format: String
         {port, REPLACE_BROKER_PORT},                                        % Format: Integer
         {qos, 

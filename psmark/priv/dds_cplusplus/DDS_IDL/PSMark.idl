@@ -1,4 +1,4 @@
-module PsBench {
+module PSMark {
     @topic
     struct DeviceMessage {
         unsigned long long seq_id;

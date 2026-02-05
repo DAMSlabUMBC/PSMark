@@ -1,6 +1,6 @@
--module(ps_bench_config_manager).
+-module(psmark_config_manager).
 
--include("ps_bench_config.hrl").
+-include("psmark_config.hrl").
 
 % Loading exports
 -export([load_config_from_env_vars/0]).
@@ -31,7 +31,7 @@ load_config_from_env_vars() ->
             {ok, ApplicationName} = application:get_application(),
             persistent_term:put({?MODULE, app_name}, ApplicationName),
 
-            ps_bench_utils:log_state_change("Loading Config"),
+            psmark_utils:log_state_change("Loading Config"),
             
             % Load config
             {ok, DeviceDefDir} = fetch_device_definitions_dir(),
@@ -52,7 +52,7 @@ ensure_env_vars_set() ->
         [] ->
             ok;
         _ ->
-            ps_bench_utils:log_message("Required environment variable(s) ~p not defined.", [MissingKeys]),
+            psmark_utils:log_message("Required environment variable(s) ~p not defined.", [MissingKeys]),
             error
     end.
 
@@ -84,29 +84,29 @@ load_config(DeviceDefDir, DeploymentDefDir, ScenarioDefDir) ->
 
 load_definition(FilePath, ProcessFunction) ->
     
-    ps_bench_utils:log_message("\tLoading ~s...", [filename:basename(FilePath)]),
+    psmark_utils:log_message("\tLoading ~s...", [filename:basename(FilePath)]),
     
     case file:consult(FilePath) of
         {ok, [Def]} ->
             case ProcessFunction(Def) of
                 ok ->
-                    ps_bench_utils:log_message("\t> Success!", []),
+                    psmark_utils:log_message("\t> Success!", []),
                     ok;
                 {error, Reason} ->
-                    ps_bench_utils:log_message("\t> Failed: ~s", [Reason]),
+                    psmark_utils:log_message("\t> Failed: ~s", [Reason]),
                     error
             end;
 
         {error, {Line, _Mod, Term}} ->
-            ps_bench_utils:log_message("\t> Failed: Malformed on line ~p: ~p", [Line, Term]),
+            psmark_utils:log_message("\t> Failed: Malformed on line ~p: ~p", [Line, Term]),
             error;
 
         {error, enoent} ->
-            ps_bench_utils:log_message("\t> Failed: File not found at ~p", [FilePath]),
+            psmark_utils:log_message("\t> Failed: File not found at ~p", [FilePath]),
             error;
 
         {error, Error} ->
-            ps_bench_utils:log_message("\t> Failed: Could not read file ~p. Error: ~p", [FilePath, Error]),
+            psmark_utils:log_message("\t> Failed: Could not read file ~p. Error: ~p", [FilePath, Error]),
             error
     end.
 
@@ -118,14 +118,14 @@ load_device_definitions(DirPath) ->
 
     case filelib:is_dir(DirPath) of
         true ->
-            ps_bench_utils:log_message("Loading device definitions from ~p...", [DirPath]),
+            psmark_utils:log_message("Loading device definitions from ~p...", [DirPath]),
             DeviceDefs = filelib:wildcard(?DEVICE_FILE_EXT, DirPath),
             FullDevicePaths =  lists:map(fun(DefFile) -> string:join([DirPath, DefFile], "/") end, DeviceDefs),
             lists:foreach(fun(X) -> load_definition(X, fun process_device_definition/1) end, FullDevicePaths),
-            ps_bench_utils:log_message("Done loading device definitions."),
+            psmark_utils:log_message("Done loading device definitions."),
             ok;
         false ->
-            ps_bench_utils:log_message("Provided device definitions path was not found or is not a directory: ~p", [DirPath]),
+            psmark_utils:log_message("Provided device definitions path was not found or is not a directory: ~p", [DirPath]),
             error
     end.
 
@@ -139,7 +139,7 @@ process_device_definition(Def) ->
     % Having extra keys is just a warning, disregard return of the case
     case ExtraKeys of
         [] -> ok;
-        _ -> ps_bench_utils:log_message("\tWarning: Unknown key(s) ~p found in definition. Ignoring...", [ExtraKeys])
+        _ -> psmark_utils:log_message("\tWarning: Unknown key(s) ~p found in definition. Ignoring...", [ExtraKeys])
     end,
 
     % Missing keys is fatal
@@ -161,14 +161,14 @@ load_deployment_definitions(DirPath) ->
 
     case filelib:is_dir(DirPath) of
         true ->
-            ps_bench_utils:log_message("Loading deployment definitions from ~p...", [DirPath]),
+            psmark_utils:log_message("Loading deployment definitions from ~p...", [DirPath]),
             DeploymentDefs = filelib:wildcard(?DEPLOYMENT_FILE_EXT, DirPath),
             FullPaths =  lists:map(fun(DefFile) -> string:join([DirPath, DefFile], "/") end, DeploymentDefs),
             lists:foreach(fun(X) -> load_definition(X, fun process_deployment_definition/1) end, FullPaths),
-            ps_bench_utils:log_message("Done loading deployment definitions."),
+            psmark_utils:log_message("Done loading deployment definitions."),
             ok;
         false ->
-            ps_bench_utils:log_message("Provided deployment definitions path was not found or is not a directory: ~p", [DirPath]),
+            psmark_utils:log_message("Provided deployment definitions path was not found or is not a directory: ~p", [DirPath]),
             error
     end.
 
@@ -183,7 +183,7 @@ process_deployment_definition(Def) ->
     % Having extra keys is just a warning, disregard return of the case
     case ExtraKeys of
         [] -> ok;
-        _ -> ps_bench_utils:log_message("\tWarning: Unknown key(s) ~p found in definition. Ignoring...", [ExtraKeys])
+        _ -> psmark_utils:log_message("\tWarning: Unknown key(s) ~p found in definition. Ignoring...", [ExtraKeys])
     end,
 
     % Missing keys is fatal
@@ -226,7 +226,7 @@ process_deployment_node(Def, NodeName, DeploymentName) ->
     % Having extra keys is just a warning, disregard return of the case
     case ExtraKeys of
         [] -> ok;
-        _ -> ps_bench_utils:log_message("\tWarning: Unknown key(s) ~p found in node ~p definition. Ignoring...", [ExtraKeys, NodeName])
+        _ -> psmark_utils:log_message("\tWarning: Unknown key(s) ~p found in node ~p definition. Ignoring...", [ExtraKeys, NodeName])
     end,
 
     % Missing keys is fatal
@@ -248,14 +248,14 @@ load_scenario_definitions(DirPath) ->
 
     case filelib:is_dir(DirPath) of
         true ->
-            ps_bench_utils:log_message("Loading scenario definitions from ~p...", [DirPath]),
+            psmark_utils:log_message("Loading scenario definitions from ~p...", [DirPath]),
             ScenarioDefs = filelib:wildcard(?SCENARIO_FILE_EXT, DirPath),
             FullPaths =  lists:map(fun(DefFile) -> string:join([DirPath, DefFile], "/") end, ScenarioDefs),
             lists:foreach(fun(X) -> load_definition(X, fun process_scenario_definition/1) end, FullPaths),
-            ps_bench_utils:log_message("Done loading scenario definitions."),
+            psmark_utils:log_message("Done loading scenario definitions."),
             ok;
         false ->
-            ps_bench_utils:log_message("Provided scenario definitions path was not found or is not a directory: ~p", [DirPath]),
+            psmark_utils:log_message("Provided scenario definitions path was not found or is not a directory: ~p", [DirPath]),
             error
     end.
 
@@ -270,7 +270,7 @@ process_scenario_definition(Def) ->
     % Having extra keys is just a warning, disregard return of the case
     case ExtraKeys of
         [] -> ok;
-        _ -> ps_bench_utils:log_message("\tWarning: Unknown key(s) ~p found in definition. Ignoring...", [ExtraKeys])
+        _ -> psmark_utils:log_message("\tWarning: Unknown key(s) ~p found in definition. Ignoring...", [ExtraKeys])
     end,
 
     % Missing keys is fatal
@@ -323,7 +323,7 @@ process_mqtt_config(ProtocolProps, ProtocolVersion, ScenarioName) ->
     % Having extra keys is just a warning, disregard return of the case
     case ExtraKeys of
         [] -> ok;
-        _ -> ps_bench_utils:log_message("\tWarning: Unknown key(s) ~p found in MQTT properties. Ignoring...", [ExtraKeys])
+        _ -> psmark_utils:log_message("\tWarning: Unknown key(s) ~p found in MQTT properties. Ignoring...", [ExtraKeys])
     end,
 
     % Missing keys is fatal
@@ -346,7 +346,7 @@ process_dds_config(ProtocolProps, ProtocolName, ScenarioName) ->
     % Having extra keys is just a warning, disregard return of the case
     case ExtraKeys of
         [] -> ok;
-        _ -> ps_bench_utils:log_message("\tWarning: Unknown key(s) ~p found in DDS properties. Ignoring...", [ExtraKeys])
+        _ -> psmark_utils:log_message("\tWarning: Unknown key(s) ~p found in DDS properties. Ignoring...", [ExtraKeys])
     end,
 
     % Missing keys is fatal
@@ -369,7 +369,7 @@ process_scenario_metric_config(MetricProps, ScenarioName) ->
     % Having extra keys is just a warning, disregard return of the case
     case ExtraKeys of
         [] -> ok;
-        _ -> ps_bench_utils:log_message("\tWarning: Unknown key(s) ~p found in metric properties. Ignoring...", [ExtraKeys])
+        _ -> psmark_utils:log_message("\tWarning: Unknown key(s) ~p found in metric properties. Ignoring...", [ExtraKeys])
     end,
 
     % Missing keys is fatal
@@ -515,7 +515,7 @@ fetch_node_list() ->
     % Check to see if we've already made this
     case persistent_term:get({?MODULE, node_list}, undefined) of
         undefined ->
-            {ok, NodeNames} = ps_bench_config_manager:fetch_node_name_list(),
+            {ok, NodeNames} = psmark_config_manager:fetch_node_name_list(),
             NodeList = lists:map(fun(X) -> fetch_full_node_from_name(X) end, NodeNames),
             persistent_term:put({?MODULE, node_list}, NodeList),
             {ok, NodeList};
@@ -525,8 +525,8 @@ fetch_node_list() ->
 
 fetch_full_node_from_name(NodeName) ->
     {ok, Host} = fetch_host_for_node_name(NodeName, net_adm:localhost()),
-    NodeStr = ps_bench_utils:convert_to_list(NodeName),
-    HostStr = ps_bench_utils:convert_to_list(Host),
+    NodeStr = psmark_utils:convert_to_list(NodeName),
+    HostStr = psmark_utils:convert_to_list(Host),
     
     % Build the node name to match current distribution mode
     case node() of

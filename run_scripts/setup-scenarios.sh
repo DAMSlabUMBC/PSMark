@@ -32,7 +32,7 @@ fi
 SCRIPT_PATH=$(realpath "$0")
 SCRIPT_DIR=$(dirname $SCRIPT_PATH)
 CONTAINER_CONFIG_DIR="${SCRIPT_DIR}/../container_configs"
-SRC_DIR="${SCRIPT_DIR}/../ps_bench"
+SRC_DIR="${SCRIPT_DIR}/../psmark"
 SCENARIO_DIR="${SRC_DIR}/configs/builtin-test-suites/testcases"
 
 # Set the durations for the scenarios

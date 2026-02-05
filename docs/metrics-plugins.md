@@ -8,7 +8,7 @@ This guide shows how to create and register Erlang-based metric plugins. Python 
 - After the scenario completes, the metric manager calls `Module:calc()` for each registered plugin. Do your analysis and write outputs (e.g., CSV) in `calc/0`.
 
 ## Data Available for Calculations
-From `ps_bench_store`:
+From `psmark_store`:
 - Events
   - `fetch_recv_events/0` → `[{Node, RecvClient, PublisherNode, TopicBin, Seq, PubTimeNs, RecvTimeNs, Bytes}]`
   - `fetch_publish_events/0` → `[{Node, ClientName, TopicBin, Seq}]`
@@ -32,7 +32,7 @@ init(OutDir) ->
 calc() ->
     OutDir = persistent_term:get({?MODULE, out_dir}),
     %% Example: compute count of recv events per-publisher
-    Events = ps_bench_store:fetch_recv_events(),
+    Events = psmark_store:fetch_recv_events(),
     Counts = lists:foldl(
                fun({_, _, PubNode, _Topic, _Seq, _TPub, _TRecv, _Bytes}, Acc) ->
                        maps:update_with(PubNode, fun(N)->N+1 end, 1, Acc)
@@ -55,14 +55,14 @@ Add your module to `metric_config.metric_plugins` with the `erlang` interface:
    {output_dir, "results"},
    {metric_plugins,
     [
-      {ps_bench_throughput_calc_plugin, erlang},
-      {ps_bench_latency_calc_plugin, erlang},
+      {psmark_throughput_calc_plugin, erlang},
+      {psmark_latency_calc_plugin, erlang},
       {my_metric_plugin, erlang}
     ]}
  ]}
 ```
 
 ## Examples
-- `psmark/src/metrics/plugins/ps_bench_latency_calc_plugin.erl`
-- `psmark/src/metrics/plugins/ps_bench_throughput_calc_plugin.erl`
-- `psmark/src/metrics/plugins/ps_bench_dropped_message_calc_plugin.erl`
+- `psmark/src/metrics/plugins/psmark_latency_calc_plugin.erl`
+- `psmark/src/metrics/plugins/psmark_throughput_calc_plugin.erl`
+- `psmark/src/metrics/plugins/psmark_dropped_message_calc_plugin.erl`

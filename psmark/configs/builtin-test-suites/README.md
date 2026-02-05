@@ -27,7 +27,7 @@ The scalability scenarios are intended to benchmark how varying the quantites of
 The QoS variation scenarios are intended to benchmark how altering the required quality-of-service parameters for device communication affects the performance of the pub/sub system. Scenarios are provided to benchmark each dataset with both weak and strong service quality guarentees. Scenarios are provided for the MQTT 5 and DDS protocols.
 
 MQTT 5 uses QoS 0 for low guarentee and 2 for high guarentee.
-DDS uses the quality of service parameters given in the PsBenchHighProfile and PsBenchLowProfile profiles in the qos.xml file found within `configs/dds_configs`.
+DDS uses the quality of service parameters given in the PSMarkHighProfile and PSMarkLowProfile profiles in the qos.xml file found within `configs/dds_configs`.
 
 ### Cross-Protocol
 The cross-protocol scenarios are intended to benchmark performance differences in the system across different pub/sub protocols. Scenarios are provided to benchmark each dataset with MQTT 3.1.1, MQTT 5, and DDS.

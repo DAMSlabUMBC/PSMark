@@ -14,11 +14,11 @@
 
     {protocol_config,                                                       % Protocol specific configuration, see README for details on protocol configuration
     [
-        {nif_module, REPLACE_NIF_MODULE_NAME}                               % Defaults to: ps_bench_default_dds_interface
-        {nif_full_path, REPLACE_PATH_TO_NIF_LIB},                           % Defaults to: "priv/dds_cplusplus/lib/libps_bench_default_dds_interface"
+        {nif_module, REPLACE_NIF_MODULE_NAME}                               % Defaults to: psmark_default_dds_interface
+        {nif_full_path, REPLACE_PATH_TO_NIF_LIB},                           % Defaults to: "priv/dds_cplusplus/lib/libpsmark_default_dds_interface"
         {domain_id, REPLACE_DDS_DOMAIN_ID},                                                       
         {qos_profile, REPLACE_QOS_PROFILE},                                 % Defaults to OpenDDS default QoS
-        {config_file, REPLACE_PATH_TO_CONFIG}                               % Defaults to: "configs/dds_configs/ps_bench_default_dds_interface.ini"
+        {config_file, REPLACE_PATH_TO_CONFIG}                               % Defaults to: "configs/dds_configs/psmark_default_dds_interface.ini"
     ]},
 
     {metric_config,                                                         % Metric specific configuration, see README for details on metric configuration
