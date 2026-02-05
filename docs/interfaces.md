@@ -63,7 +63,7 @@ The DDS adapter (`ps_bench_nif_dds_adapter`) calls a NIF module to interact with
 ```
 ## Advanced: Adding a New Protocol
 If you want to add an entirely new protocol:
-- Extend `?SUPPORTED_PROTOCOLS` in `ps_bench/include/ps_bench_config.hrl`.
+- Extend `?SUPPORTED_PROTOCOLS` in `psmark/include/ps_bench_config.hrl`.
 - Teach `ps_bench_config_manager` how to parse your protocol’s `protocol_config` and provide accessor functions.
 - Add a new adapter module analogous to `ps_bench_erlang_mqtt_adapter` or `ps_bench_nif_dds_adapter`.
 - Update `ps_bench_client_sup` with a `process_<yourproto>_children/1` to supervise your client workers.

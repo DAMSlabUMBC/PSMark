@@ -63,6 +63,6 @@ Add your module to `metric_config.metric_plugins` with the `erlang` interface:
 ```
 
 ## Examples
-- `ps_bench/src/metrics/plugins/ps_bench_latency_calc_plugin.erl`
-- `ps_bench/src/metrics/plugins/ps_bench_throughput_calc_plugin.erl`
-- `ps_bench/src/metrics/plugins/ps_bench_dropped_message_calc_plugin.erl`
+- `psmark/src/metrics/plugins/ps_bench_latency_calc_plugin.erl`
+- `psmark/src/metrics/plugins/ps_bench_throughput_calc_plugin.erl`
+- `psmark/src/metrics/plugins/ps_bench_dropped_message_calc_plugin.erl`

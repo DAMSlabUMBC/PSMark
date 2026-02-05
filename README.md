@@ -10,6 +10,25 @@ PSMark is a distributed benchmark for evaluating publish/subscribe middleware in
 - **Comprehensive metrics**: Latency, throughput, dropped messages, and hardware utilization
 - **Pluggable architecture**: Custom protocol adapters and metric plugins
 
+## Repository Structure
+
+```
+PSMark/
+├── psmark/                    # Main Erlang application
+│   ├── src/
+│   │   ├── core/               # Configuration, lifecycle, storage
+│   │   ├── protocol_clients/   # MQTT and DDS adapters
+│   │   └── metrics/            # Metric plugins
+│   ├── configs/
+│   │   ├── builtin-test-suites/  # Built-in workloads
+│   │   └── templates/            # Configuration templates
+│   └── scripts/                # Automation scripts
+├── container_configs/
+│   └── docker_files/
+│       └── compose_yamls/      # Docker Compose files
+└── docs/                       # Additional documentation
+```
+
 ## Requirements
 
 - **Docker**: Docker Engine 20.10+ and Docker Compose v2
@@ -29,7 +48,7 @@ No additional build steps required—Docker Compose handles image building autom
 ### Native Setup (Without Docker)
 
 ```bash
-cd ps_bench
+cd psmark
 rebar3 compile
 rebar3 release
 ```
@@ -59,102 +78,9 @@ Scaling variants (2x, 10x) multiply device counts proportionally.
 
 For DDS (brokerless): Use `docker-compose.single.dds.yml`
 
-## Running Experiments
-
-### **A Note on Permissions**
-Currently, the Docker containers are configured to run as the superuser `root` to simplify the execution of third-party broker containers. It is heavily advised to run all commands below as the `root` user or with `sudo` on the host machine to prevent permission errors.
-
-### Quick Start: Single Benchmark Run
-
-Run a single benchmark with a specific broker:
-
-```bash
-# Run smart_home workload with Mosquitto broker
-SCENARIO=scalabilitysuite_smart_home_mqttv5_1_node \
-docker compose -f container_configs/docker_files/compose_yamls/docker-compose.single.mosquitto.yml \
-up --build --abort-on-container-exit
-```
-
-### Automated Test Suites
-
-PSMark provides scripts to run complete test suites automatically:
-
-**MQTT Scalability Suite** (QoS 0):
-```bash
-# Run all brokers, all scenarios, 3 repeats each
-./ps_bench/scripts/run-single-scalability-suite.sh
-
-# Run specific broker(s)
-BROKER_LIST=emqx,mosquitto ./ps_bench/scripts/run-single-scalability-suite.sh
-
-# Filter by scenario name
-SCEN_FILTER=smart_factory ./ps_bench/scripts/run-single-scalability-suite.sh
-
-# Change repeat count
-REPEAT_COUNT=4 ./ps_bench/scripts/run-single-scalability-suite.sh
-```
-
-**MQTT QoS Variation Suite** (QoS 0 vs QoS 2):
-```bash
-./ps_bench/scripts/run-single-qos-suite.sh
-```
-
-**DDS Suite**:
-```bash
-./ps_bench/scripts/run-single-dds-suite.sh
-```
-
-### Multi-Node Benchmarks (5 Nodes)
-
-```bash
-# MQTT with EMQX broker
-docker compose -f container_configs/docker_files/compose_yamls/docker-compose.mqtt.emqx.yml up --build
-
-# DDS (brokerless)
-docker compose -f container_configs/docker_files/compose_yamls/docker-compose.dds.yml up --build
-```
-
-### Stopping Experiments
-
-```bash
-# Stop and remove containers
-docker compose -f <compose-file> down
-
-# Remove images if needed
-docker rmi psmark-runner:latest emqx-with-exporter mosquitto-with-exporter
-```
-
-## Results and Output
-
-Results are written to `container_configs/docker_files/compose_yamls/results/` with timestamped run folders (e.g., `run_20260120_143052_runner1/`).
-
-### Output CSV Files
-
-Each benchmark run produces:
-
-| File | Description |
-|------|-------------|
-| `throughput.csv` | Message throughput (avg, variance, min/max, P90/P95/P99) |
-| `latency.csv` | End-to-end latency in milliseconds (avg, variance, min/max, P90/P95/P99) |
-| `dropped_messages.csv` | Message loss (total sent/received, drop count, drop rate) |
-| `local_hw_stats.csv` | Runner node CPU and memory usage |
-| `broker_hw_stats.csv` | Broker node CPU and memory usage |
-
-### Example Output
-
-```csv
-# throughput.csv
-Receiver,Sender,DurationSeconds,TotalMessagesRecv,AverageThroughput,Variance,MinThroughput,MaxThroughput,...
-runner1,overall,600.02,341062,568.4,1780.5,20,604,...
-
-# latency.csv
-Receiver,Sender,SumTotalLatency,TotalMessagesRecv,AverageLatencyMs,VarianceMs,MinMs,MaxMs,...
-runner1,overall,681335486365,341062,1.99,13014572.8,0.18,64.56,...
-```
-
 ## Configuration
 
-PSMark uses three types of Erlang configuration files in `ps_bench/configs/`:
+PSMark uses three types of Erlang configuration files in `psmark/configs/`:
 
 ### Device Definition (`*.device`)
 
@@ -236,23 +162,97 @@ Override default settings via environment variables:
 | `REPEAT_COUNT` | Number of repetitions | `4` |
 | `SCEN_FILTER` | Filter scenarios by substring | `smart_factory` |
 
-## Repository Structure
+## Running Experiments
 
+### **A Note on Permissions**
+Currently, the Docker containers are configured to run as the superuser `root` to simplify the execution of third-party broker containers. It is heavily advised to run all commands below as the `root` user or with `sudo` on the host machine to prevent permission errors.
+
+### Quick Start: Single Benchmark Run
+
+Run a single benchmark with a specific broker:
+
+```bash
+# Run smart_home workload with Mosquitto broker
+SCENARIO=scalabilitysuite_smart_home_mqttv5_1_node \
+docker compose -f container_configs/docker_files/compose_yamls/docker-compose.single.mosquitto.yml \
+up --build --abort-on-container-exit
 ```
-PSMark/
-├── ps_bench/                    # Main Erlang application
-│   ├── src/
-│   │   ├── core/               # Configuration, lifecycle, storage
-│   │   ├── protocol_clients/   # MQTT and DDS adapters
-│   │   └── metrics/            # Metric plugins
-│   ├── configs/
-│   │   ├── builtin-test-suites/  # Built-in workloads
-│   │   └── templates/            # Configuration templates
-│   └── scripts/                # Automation scripts
-├── container_configs/
-│   └── docker_files/
-│       └── compose_yamls/      # Docker Compose files
-└── docs/                       # Additional documentation
+
+### Automated Test Suites
+
+PSMark provides scripts to run complete test suites automatically:
+
+**MQTT Scalability Suite** (QoS 0):
+```bash
+# Run all brokers, all scenarios, 3 repeats each
+./psmark/scripts/run-single-scalability-suite.sh
+
+# Run specific broker(s)
+BROKER_LIST=emqx,mosquitto ./psmark/scripts/run-single-scalability-suite.sh
+
+# Filter by scenario name
+SCEN_FILTER=smart_factory ./psmark/scripts/run-single-scalability-suite.sh
+
+# Change repeat count
+REPEAT_COUNT=4 ./psmark/scripts/run-single-scalability-suite.sh
+```
+
+**MQTT QoS Variation Suite** (QoS 0 vs QoS 2):
+```bash
+./psmark/scripts/run-single-qos-suite.sh
+```
+
+**DDS Suite**:
+```bash
+./psmark/scripts/run-single-dds-suite.sh
+```
+
+### Multi-Node Benchmarks (5 Nodes)
+
+```bash
+# MQTT with EMQX broker
+docker compose -f container_configs/docker_files/compose_yamls/docker-compose.mqtt.emqx.yml up --build
+
+# DDS (brokerless)
+docker compose -f container_configs/docker_files/compose_yamls/docker-compose.dds.yml up --build
+```
+
+### Stopping Experiments
+
+```bash
+# Stop and remove containers
+docker compose -f <compose-file> down
+
+# Remove images if needed
+docker rmi psmark-runner:latest emqx-with-exporter mosquitto-with-exporter
+```
+
+## Results and Output
+
+Results are written to `container_configs/docker_files/compose_yamls/results/` with timestamped run folders (e.g., `run_20260120_143052_runner1/`).
+
+### Output CSV Files
+
+Each benchmark run produces:
+
+| File | Description |
+|------|-------------|
+| `throughput.csv` | Message throughput (avg, variance, min/max, P90/P95/P99) |
+| `latency.csv` | End-to-end latency in milliseconds (avg, variance, min/max, P90/P95/P99) |
+| `dropped_messages.csv` | Message loss (total sent/received, drop count, drop rate) |
+| `local_hw_stats.csv` | Runner node CPU and memory usage |
+| `broker_hw_stats.csv` | Broker node CPU and memory usage |
+
+### Example Output
+
+```csv
+# throughput.csv
+Receiver,Sender,DurationSeconds,TotalMessagesRecv,AverageThroughput,Variance,MinThroughput,MaxThroughput,...
+runner1,overall,600.02,341062,568.4,1780.5,20,604,...
+
+# latency.csv
+Receiver,Sender,SumTotalLatency,TotalMessagesRecv,AverageLatencyMs,VarianceMs,MinMs,MaxMs,...
+runner1,overall,681335486365,341062,1.99,13014572.8,0.18,64.56,...
 ```
 
 ## Extending PSMark
