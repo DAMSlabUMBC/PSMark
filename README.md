@@ -7,51 +7,94 @@ PSMark is a distributed benchmark for evaluating publish/subscribe middleware in
 - **Multi-protocol support**: MQTT v5, MQTT v3.1.1, and DDS
 - **Realistic IoT workloads**: Four domain-specific scenarios with configurable device behaviors
 - **Distributed execution**: Scale from single-node to multi-node deployments
-- **Comprehensive metrics**: Latency, throughput, dropped messages, and hardware utilization
+- **Built-In metrics**: Latency, throughput, dropped messages, and hardware utilization
 - **Pluggable architecture**: Custom protocol adapters and metric plugins
+
+## PSMark Architecture
+![Architecture diagram](ArchDiagram.png)
+
+## PSMark Workflow
+![Benchmark execution](BenchmarkExecution.png)
 
 ## Repository Structure
 
 ```
 PSMark/
-├── psmark/                    # Main Erlang application
-│   ├── src/
-│   │   ├── core/               # Configuration, lifecycle, storage
-│   │   ├── protocol_clients/   # MQTT and DDS adapters
-│   │   └── metrics/            # Metric plugins
+├── container_configs/              # Container-specific configuration files
+│   ├── docker_files/               # Dockerfiles
+│   │   └── compose_yamls/          # Docker Compose files
+│   └── kubernetes_yaml/            # Example Kubernetes deployment files
+├── docs/                           # Additional documentation
+├── paper_results/                  # Results as reported in the PSMark paper
+├── psmark/                         # Main Erlang application
 │   ├── configs/
-│   │   ├── builtin-test-suites/  # Built-in workloads
-│   │   └── templates/            # Configuration templates
-│   └── scripts/                # Automation scripts
-├── container_configs/
-│   └── docker_files/
-│       └── compose_yamls/      # Docker Compose files
-└── docs/                       # Additional documentation
+│   │   ├── builtin-test-suites/    # Built-in workloads
+│   │   ├── dds_configs/            # DDS-specific configuration files
+│   │   └── templates/              # Configuration templates
+│   ├── include/                    # Erlang Headers
+│   ├── priv/dds_cplusplus          # DDS C++ NIF Implementation
+│   ├── scripts/                    # Automation scripts for Docker deployments
+│   └── src/
+│       ├── core/                   # Configuration, lifecycle, storage
+│       ├── metrics/                # Metric plugins
+│       ├── protocol_clients/       # MQTT and DDS adapters
+│       └── scenario_execution/     # Scenario Management
+└── run_scripts/                    # Top-level container management scripts for Docker deployments
 ```
 
 ## Requirements
 
-- **Docker**: Docker Engine 20.10+ and Docker Compose v2
-- **For native development**: Erlang/OTP 25+ and rebar3
+### Docker Compose Deployments (Recommended)
+- Docker Engine 28.0.4+ 
+- Docker Compose 2.0+
+
+### Kubernetes Deployments
+- Kubernetes v1.33+
+  
+### Native Development and Execution
+- Erlang/OTP 27+ (including rebar3)
+- Prometheus Node Expoerter v1.8.2 (Installed on brokers and PSMark nodes)
+- OpenDDS v3.33.0+ (if running with DDS)
+- Xerces-C++ v3.3+ (if running with DDS)
 
 ## Installation
+Since Kubernetes deployments are highly tailored to the environment, we describe Docker Compose and native deployment setups here. Refer to the template Kubernetes scripts for examples of Kubernetes configuration.
 
-### Docker Setup (Recommended)
-
+### Docker Compose (Recommended)
+Build and initialize the containers using the following commands:
 ```bash
 git clone https://github.com/DAMSlabUMBC/PSMark.git
 cd PSMark
+./run_scripts/setup-scenarios.sh <desired_duration> <units_of_duration>
+./run_scripts/build-container-images.sh
 ```
-
-No additional build steps required—Docker Compose handles image building automatically.
+where `<desired_duration>` is an integer > 0 and `<units_of_duration>` is either "seconds", "minutes", or "hours".
 
 ### Native Setup (Without Docker)
 
+If running with DDS, first follow the instructions on the Apache XML website to install Xerces-C++ (https://xerces.apache.org/xerces-c/install-3.html). Then build and install OpenDDS (https://opendds.org/).
+
+Clone the repository:
 ```bash
+git clone https://github.com/DAMSlabUMBC/PSMark.git
+```
+
+If running with DDS, build the DDS NIF. First update `PSMark/psmark/priv/dds_cplusplus/build.sh` with the install paths of Erlang ERTS (e.g., `/usr/lib/erlang/erts-15.2.7`) and Xerces-C++ (e.g., `/usr/lib`). Then build with
+```bash
+source $DDS_HOME/OpenDDS-3.33.0/setenv.sh
+cd psmark/priv/dds_cplusplus
+./build.sh
+```
+
+To compile the code, use:
+```bash
+source $DDS_HOME/OpenDDS-3.33.0/setenv.sh     # If running with DDS
 cd psmark
 rebar3 compile
 rebar3 release
 ```
+
+To run the code, first bootstrap the Erlang network (only done once per reboot) with `rebar3 shell --sname temp`. Then exit out and run the PSMark code with `rebar3 shell --config <path_to_psmark.config>`.
 
 ## Built-in Workloads
 
@@ -68,7 +111,7 @@ Scaling variants (2x, 10x) multiply device counts proportionally.
 
 ## Supported Brokers
 
-| Broker | Version | Compose File |
+| Broker | Version | Compose File (One Node) |
 |--------|---------|--------------|
 | EMQX | 5.x | `docker-compose.single.emqx.yml` |
 | Mosquitto | 2.x | `docker-compose.single.mosquitto.yml` |
@@ -160,7 +203,7 @@ Override default settings via environment variables:
 | `SCENARIO` | Scenario name to run | `scalabilitysuite_smart_home_mqttv5_1_node` |
 | `BROKER_LIST` | Comma-separated broker list | `emqx,mosquitto` |
 | `REPEAT_COUNT` | Number of repetitions | `4` |
-| `SCEN_FILTER` | Filter scenarios by substring | `smart_factory` |
+| `SCEN_FILTER` | Filter scenarios by substring (Refer to "Config Name" above) | `smart_factory` |
 
 ## Running Experiments
 
@@ -243,7 +286,7 @@ Each benchmark run produces:
 | `local_hw_stats.csv` | Runner node CPU and memory usage |
 | `broker_hw_stats.csv` | Broker node CPU and memory usage |
 
-### Example Output
+#### Example Output
 
 ```csv
 # throughput.csv
@@ -255,6 +298,13 @@ Receiver,Sender,SumTotalLatency,TotalMessagesRecv,AverageLatencyMs,VarianceMs,Mi
 runner1,overall,681335486365,341062,1.99,13014572.8,0.18,64.56,...
 ```
 
+### Output Directories
+In addition to the CSV metric results, PSMark outputs the following data for troubleshooting:
+| Directory | Description |
+|------|-------------|
+| `broker_logs` | Log files from the broker/DDS library for troubleshooting errors |
+| `raw_events` | Full logs of all client connect, disconnect, publish, and receive events. Also includes all hardware metric readings. |
+
 ## Extending PSMark
 
 ### Custom Metric Plugins
@@ -262,6 +312,8 @@ runner1,overall,681335486365,341062,1.99,13014572.8,0.18,64.56,...
 Implement an Erlang module with:
 - `init(OutDir) -> ok` — Initialize with output directory
 - `calc() -> ok` — Calculate and write metrics
+
+Your plugin should output its calculations to `OutDir`.
 
 Register in your scenario's `metric_plugins` list. See `docs/metrics-plugins.md` for details.
 
