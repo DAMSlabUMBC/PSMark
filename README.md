@@ -1,4 +1,4 @@
-# PSMark
+# PSMark: A distributed pub/sub IoT benchmark
 
 PSMark is a distributed benchmark for evaluating publish/subscribe middleware in large-scale IoT deployments. It orchestrates synthetic device workloads across one or more nodes, measures end-to-end latency, throughput, and message loss, and supports both MQTT and DDS protocols.
 
