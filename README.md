@@ -53,7 +53,7 @@ PSMark/
   
 ### Native Development and Execution
 - Erlang/OTP 27+ (including rebar3)
-- Prometheus Node Expoerter v1.8.2 (Installed on brokers and PSMark nodes)
+- Prometheus Node Exporter v1.8.2 (Installed on brokers and PSMark nodes)
 - OpenDDS v3.33.0+ (if running with DDS)
 - Xerces-C++ v3.3+ (if running with DDS)
 
