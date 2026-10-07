@@ -2,6 +2,8 @@
 
 PSMark is a distributed benchmark for evaluating publish/subscribe middleware in large-scale IoT deployments. It orchestrates synthetic device workloads across one or more nodes, measures end-to-end latency, throughput, and message loss, and supports both MQTT and DDS protocols.
 
+See our paper published in PerCom '25: [DOI: 10.1109/PerCom67906.2026.11524514](https://doi.org/10.1109/PerCom67906.2026.11524514).
+
 ## Key Features
 
 - **Multi-protocol support**: MQTT v5, MQTT v3.1.1, and DDS
