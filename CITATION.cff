@@ -1,0 +1,44 @@
+cff-version: 1.2.0
+message: Please cite the following works when using this software.
+preferred-citation:
+  authors:
+    - family-names: Badolato
+      given-names: Christian
+    - family-names: Samson
+      given-names: Nathan
+    - family-names: Hassan
+      given-names: Houssam Hajj
+    - family-names: Huang
+      given-names: Chih-Kai
+    - family-names: Bouloukakis
+      given-names: Georgios
+    - family-names: Pappachan
+      given-names: Primal
+    - family-names: Yus
+      given-names: Roberto
+  doi: 10.1109/percom67906.2026.11524514
+  identifiers:
+    - type: doi
+      value: 10.1109/percom67906.2026.11524514
+    - type: url
+      value: http://dx.doi.org/10.1109/PerCom67906.2026.11524514
+  title: >-
+    PSMark: A Distributed IoT Benchmark for Publish/Subscribe Under Domain-Based
+    Workloads
+  url: http://dx.doi.org/10.1109/PerCom67906.2026.11524514
+  conference:
+    name: >-
+      2026 IEEE International Conference on Pervasive Computing and
+      Communications (PerCom)
+  database: Crossref
+  date-published: 2026-03-16
+  year: 2026
+  month: 3
+  journal: >-
+    2026 IEEE International Conference on Pervasive Computing and Communications
+    (PerCom)
+  publisher:
+    name: IEEE
+  start: '1'
+  end: '10'
+  type: conference-paper
