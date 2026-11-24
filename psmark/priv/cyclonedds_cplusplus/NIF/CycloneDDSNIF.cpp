@@ -1,62 +1,66 @@
-
-#include <dds/DdsDcpsInfrastructureC.h>
-#include <dds/DdsDcpsPublicationC.h>
-#include <dds/DCPS/Marked_Default_Qos.h>
-#include <dds/DCPS/Service_Participant.h>
-#include <dds/DCPS/QOS_XML_Handler/QOS_XML_Loader.h>
-#include <ace/Arg_Shifter.h>
+#include <dds/dds.h>
+#include <dds/ddsc/dds_public_qos_provider.h>
 
 #include <erl_nif.h>
-#include <PSMarkTypeSupportImpl.h>
-#include <PSMarkC.h>
-#include "DataReaderListenerImpl.h"
+#include <CycloneDDSPSMark.h>
 
 #include <string>
 
 // Define macro to avoid compiler warnings for unused API params
 #define UNUSED_PARAM(expr) do { (void)(expr); } while (0)
+#define MAX_SAMPLES 1000
 
 ErlNifResourceType* PARTICIPANT_RES_TYPE;
 ErlNifResourceType* PUBLISHER_RES_TYPE;
 ErlNifResourceType* SUBSCRIBER_RES_TYPE;
 ERL_NIF_TERM atom_ok;
 ERL_NIF_TERM atom_not_connected;
+ERL_NIF_TERM atom_recv;
 
 typedef struct 
 {
-    DDS::DomainParticipant_ptr participant;
-    OpenDDS::DCPS::QOS_XML_Loader* loader;
+    dds_entity_t participant;
+    dds_qos_provider_t* provider;
 } ParticipantStruct;
 
 typedef struct 
 {
-    DDS::Publisher_ptr publisher;
-    PSMark::DeviceMessageDataWriter_ptr writer;
+    dds_entity_t publisher;
+    dds_entity_t writer;
     char* nodeId;
 } PublisherStruct;
 
 typedef struct 
 {
-    DDS::Subscriber_ptr subscriber;
+    dds_entity_t subscriber;
 } SubscriberStruct;
 
+typedef struct 
+{
+    ErlNifPid* pid;
+    ErlNifEnv* env;
+    ERL_NIF_TERM name;
+    ERL_NIF_TERM topicName;
+} ReaderListenerData;
 
 void participant_free_res(ErlNifEnv* env, void* obj)
 {
     UNUSED_PARAM(env);
 
     ParticipantStruct* participantStruct = (ParticipantStruct*) obj;
-    participantStruct->participant->delete_contained_entities();
-    DDS::DomainParticipantFactory_var dpf = TheParticipantFactory;
-    dpf->delete_participant(participantStruct->participant);
+    dds_delete(participantStruct->participant);
+    dds_delete_qos_provider(participantStruct->provider);
 }
 
 void publisher_free_res(ErlNifEnv* env, void* obj)
 {
     UNUSED_PARAM(env);
-    UNUSED_PARAM(obj);
     
     PublisherStruct* publisherStruct = (PublisherStruct*) obj;
+
+    dds_delete(publisherStruct->publisher);
+    dds_delete(publisherStruct->writer);
+
     if(publisherStruct->nodeId != 0)
     {
         free(publisherStruct->nodeId);
@@ -67,8 +71,9 @@ void publisher_free_res(ErlNifEnv* env, void* obj)
 void subscriber_free_res(ErlNifEnv* env, void* obj)
 {
     UNUSED_PARAM(env);
-    UNUSED_PARAM(obj);
-    // Do nothing, will be cleaned with participant
+
+    SubscriberStruct* subscriberStruct = (SubscriberStruct*) obj;
+    dds_delete(subscriberStruct->subscriber);
 }
 
 static int open_resource(ErlNifEnv* env)
@@ -100,6 +105,7 @@ static int load(ErlNifEnv* env, void** priv, ERL_NIF_TERM load_info)
 
     atom_ok = enif_make_atom(env, "ok");
     atom_not_connected = enif_make_atom(env, "not_connected");
+    atom_recv = enif_make_atom(env, "publish_recv");
 
     return 0;
 }
@@ -138,8 +144,50 @@ static void unload(ErlNifEnv* caller_env, void* priv_data)
 {
     UNUSED_PARAM(caller_env);
     UNUSED_PARAM(priv_data);
+}
 
-    TheServiceParticipant->shutdown();
+static void data_available(dds_entity_t reader, void *arg)
+{
+    void* samples[MAX_SAMPLES];
+    dds_sample_info_t info[MAX_SAMPLES];
+    int status;
+    ReaderListenerData* listenerData = (ReaderListenerData*)arg;
+
+    if(listenerData == NULL)
+    {
+        printf("LISTENER NOT SET\n");
+        return;
+    }
+
+    // Read all samples
+    int sampleCount = dds_take(reader, samples, info, MAX_SAMPLES, MAX_SAMPLES);
+    if (sampleCount > 0)
+    {
+        for (int i = 0; i < sampleCount; i++)
+        {
+            if(info[i].valid_data)
+            {
+                dds_time_t recvTime = dds_time();
+                dds_time_t pubTime = info[i].source_timestamp;
+                ERL_NIF_TERM recvTimeNs = enif_make_uint64(listenerData->env, recvTime);
+                ERL_NIF_TERM pubTimeNs = enif_make_uint64(listenerData->env, pubTime);
+                
+                PSMark_DeviceMessage* message = (PSMark_DeviceMessage*)samples[i];
+                ERL_NIF_TERM payloadSize = enif_make_uint(listenerData->env, message->payload._length);
+                ERL_NIF_TERM seqId = enif_make_uint64(listenerData->env, message->seq_id);
+                ERL_NIF_TERM publisherId = enif_make_string(listenerData->env, message->publisher_id, ERL_NIF_UTF8);
+                
+                ERL_NIF_TERM data_tuple = enif_make_tuple7(listenerData->env, listenerData->name, listenerData->topicName, seqId, pubTimeNs, recvTimeNs, payloadSize, publisherId);
+                ERL_NIF_TERM send_tuple = enif_make_tuple2(listenerData->env, atom_recv, data_tuple);
+
+                enif_send(NULL, listenerData->pid, NULL, send_tuple);
+            }
+        }
+    }
+    else if (sampleCount < 0)
+    {
+        printf("TAKE NEXT SAMPLE FAILED\n");
+    }
 }
 
 ERL_NIF_TERM create_participant(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
@@ -189,47 +237,26 @@ ERL_NIF_TERM create_participant(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
         }
     }
 
-    TheServiceParticipant->default_configuration_file(ACE_TEXT(configPath));
-    DDS::DomainParticipantFactory_var dpf = TheParticipantFactory;
+    // Get XML Provider
+    dds_qos_provider_t *provider;
+    dds_return_t dds_ret = dds_create_qos_provider(configPath, &provider);
+    if (dds_ret != DDS_RETCODE_OK) 
+        return enif_make_atom(env, "malformed_qos");
 
-    OpenDDS::DCPS::QOS_XML_Loader* xml_loader = nullptr;
-    DDS::DomainParticipantQos partQos = PARTICIPANT_QOS_DEFAULT;
-
-    if(useQos)
+    // Get domain participant QoS
+    const dds_qos_t* participantQos;
+    dds_ret = dds_qos_provider_get_qos(provider, DDS_PARTICIPANT_QOS, qosParam, &participantQos);
+    if(dds_ret != DDS_RETCODE_OK)
     {
-        xml_loader = new OpenDDS::DCPS::QOS_XML_Loader();
-        DDS::ReturnCode_t retcode = xml_loader->init(ACE_TEXT(qosParam));
-        if(retcode != DDS::RETCODE_OK)
-        {
-            free(qosParam);
-            return enif_make_atom(env, "malformed_qos");
-        }
-
-        // create domain participant
-        retcode = xml_loader->get_participant_qos(partQos, ACE_TEXT(qosParam));
-        if(retcode != DDS::RETCODE_OK)
-        {
-            free(qosParam);
-            return enif_make_atom(env, "participant_profile_not_found");
-        }
+        free(qosParam);
+        return enif_make_atom(env, "participant_profile_not_found");
     }
 
-    // create domain participant
-    DDS::DomainParticipant_var participant =
-        dpf->create_participant(domainId,
-        partQos,
-        0,
-        OpenDDS::DCPS::DEFAULT_STATUS_MASK);
-
-    if (0 == participant) 
+    // Create participant
+    dds_entity_t participant = dds_create_participant(domainId, participantQos, NULL);
+    if(participant < 0)
         return enif_make_atom(env, "participant_failed");
 
-    // Register PSMark type
-    PSMark::DeviceMessageTypeSupport_var ts =
-        new PSMark::DeviceMessageTypeSupportImpl();
-
-    if (ts->register_type(participant.in(), "") != DDS::RETCODE_OK) 
-        return enif_make_atom(env, "type_registration_failed");
 
     res = (ParticipantStruct*) enif_alloc_resource(PARTICIPANT_RES_TYPE, sizeof(ParticipantStruct));
     if(res == NULL) return enif_make_badarg(env);
@@ -237,8 +264,8 @@ ERL_NIF_TERM create_participant(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
     ret = enif_make_resource(env, res);
     enif_release_resource(res);
 
-    res->participant = participant.in();
-    res->loader = xml_loader;
+    res->participant = participant;
+    res->provider = provider;
 
     return enif_make_tuple2(env, atom_ok, ret);
 }
@@ -311,69 +338,67 @@ ERL_NIF_TERM create_subscriber_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_
         }
     }
 
-    OpenDDS::DCPS::QOS_XML_Loader* xml_loader = participantStruct->loader;
-    DDS::TopicQos topicQos = TOPIC_QOS_DEFAULT;
-    DDS::SubscriberQos subscriberQos = SUBSCRIBER_QOS_DEFAULT;
-    DDS::DataReaderQos datareaderQos = DATAREADER_QOS_DEFAULT;
+    // Get required QoS
+    const dds_qos_t* topicQos;
+    const dds_qos_t* subscriberQos;
+    const dds_qos_t* readerQos;
 
-    if(useQos && xml_loader != nullptr)
+    if(useQos && participantStruct->provider != NULL)
     {
-        // Get topic QoS
-        DDS::ReturnCode_t retcode = xml_loader->get_topic_qos(topicQos, ACE_TEXT(qosParam), ACE_TEXT(topicName));
-        if(retcode != DDS::RETCODE_OK)
+        dds_qos_provider_t* provider = participantStruct->provider;
+
+        dds_return_t dds_ret = dds_qos_provider_get_qos(provider, DDS_TOPIC_QOS, qosParam, &topicQos);
+        if(dds_ret != DDS_RETCODE_OK)
         {
             free(qosParam);
             return enif_make_atom(env, "topic_profile_not_found");
         }
-
-        retcode = xml_loader->get_subscriber_qos(subscriberQos, ACE_TEXT(qosParam));
-        if(retcode != DDS::RETCODE_OK)
+        
+        dds_ret = dds_qos_provider_get_qos(provider, DDS_SUBSCRIBER_QOS, qosParam, &subscriberQos);
+        if(dds_ret != DDS_RETCODE_OK)
         {
             free(qosParam);
             return enif_make_atom(env, "subscriber_profile_not_found");
         }
-
-        retcode = xml_loader->get_datareader_qos(datareaderQos, ACE_TEXT(qosParam), ACE_TEXT(topicName));
-        if(retcode != DDS::RETCODE_OK)
+        
+        dds_ret = dds_qos_provider_get_qos(provider, DDS_READER_QOS, qosParam, &readerQos);
+        if(dds_ret != DDS_RETCODE_OK)
         {
             free(qosParam);
             return enif_make_atom(env, "datareader_profile_not_found");
         }
     }
 
-    // create topic
-    PSMark::DeviceMessageTypeSupport_var ts =
-            new PSMark::DeviceMessageTypeSupportImpl();
-    CORBA::String_var type_name = ts->get_type_name();
-    DDS::Topic_var topic =
-        participantStruct->participant->create_topic(topicName,
-        type_name.in(),
-        topicQos,
-        0,
-        OpenDDS::DCPS::DEFAULT_STATUS_MASK);
+    // Find topic if it exists
+    dds_entity_t topic = dds_find_topic(DDS_FIND_SCOPE_PARTICIPANT, participantStruct->participant, topicName, NULL, 1);
+    
+    // Topic doesn't exist, make it
+    if(topic == 0)
+    {
+        topic = dds_create_topic(participantStruct->participant, &PSMark_DeviceMessage_desc, topicName, topicQos, NULL);
+    }
 
-    if (0 == topic) 
+    if(topic < 0)
         return enif_make_atom(env, "topic_creation_failed");
 
-    // create subscriber
-    DDS::Subscriber_var subscriber =
-        participantStruct->participant->create_subscriber(subscriberQos,
-        0,
-        OpenDDS::DCPS::DEFAULT_STATUS_MASK);
-
-    if (0 == subscriber) 
+    // Create the subscriber
+    dds_entity_t subscriber = dds_create_subscriber(participantStruct->participant, subscriberQos, NULL);
+    if(subscriber < 0)
         return enif_make_atom(env, "subscriber_creation_failed");
 
-    // create and narrow datareader, assigning listener
-    DDS::DataReaderListener_var listener(new DataReaderListenerImpl(listenerPID, clientName, topicName));
+    // Create the listener
+    ReaderListenerData* listenerData = (ReaderListenerData*)malloc(sizeof(ReaderListenerData));
+    listenerData->pid = listenerPID;
+    listenerData->env = enif_alloc_env();
+    listenerData->name = enif_make_string(listenerData->env, clientName, ERL_NIF_UTF8);
+    listenerData->topicName = enif_make_string(listenerData->env, topicName, ERL_NIF_UTF8);
 
-    DDS::DataReader_var reader =
-        subscriber->create_datareader(topic.in(),
-        datareaderQos,
-        listener.in(),
-        OpenDDS::DCPS::DEFAULT_STATUS_MASK);
+    dds_listener_t* listener = dds_create_listener(NULL);
+    dds_lset_data_available_arg(listener, data_available, listenerData, false);
 
-    if (0 == reader) 
+    // Create the datareader
+    dds_entity_t datareader = dds_create_reader(subscriber, topic, readerQos, listener);
+    if(datareader < 0)
         return enif_make_atom(env, "datareader_creation_failed");
 
     SubscriberStruct* res;
@@ -385,40 +410,9 @@ ERL_NIF_TERM create_subscriber_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_
     ret = enif_make_resource(env, res);
     enif_release_resource(res);
 
-    res->subscriber = subscriber.in();
+    res->subscriber = subscriber;
 
     return enif_make_tuple2(env, atom_ok, ret);
-}
-
-ERL_NIF_TERM delete_subscriber(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
-{
-    UNUSED_PARAM(argc);
-
-    // Get participant
-    void* voidStruct = nullptr;
-    if(!enif_get_resource(env, argv[0], PARTICIPANT_RES_TYPE, &voidStruct))
-    {
-        return enif_make_atom(env, "failed_to_fetch_participant");
-    }
-
-    ParticipantStruct* participantStruct = (ParticipantStruct*)voidStruct;
-
-    // Get subscriber
-    voidStruct = nullptr;
-    if(!enif_get_resource(env, argv[1], SUBSCRIBER_RES_TYPE, &voidStruct))
-    {
-        return enif_make_atom(env, "failed_to_fetch_subscriber");
-    }
-
-    SubscriberStruct* subscriberStruct = (SubscriberStruct*)voidStruct;
-
-    // Remove subscriber from participant
-    if(!participantStruct->participant->delete_subscriber(subscriberStruct->subscriber) == DDS::RETCODE_OK)
-    {
-        return enif_make_atom(env, "failed_to_delete_subscriber");
-    }
-
-    return atom_ok;
 }
 
 ERL_NIF_TERM create_publisher_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
@@ -485,74 +479,58 @@ ERL_NIF_TERM create_publisher_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_T
         }
     }
 
-    OpenDDS::DCPS::QOS_XML_Loader* xml_loader = participantStruct->loader;
-    DDS::TopicQos topicQos = TOPIC_QOS_DEFAULT;
-    DDS::PublisherQos publisherQos = PUBLISHER_QOS_DEFAULT;
-    DDS::DataWriterQos datawriterQos = DATAWRITER_QOS_DEFAULT;
+     // Get required QoS
+    const dds_qos_t* topicQos;
+    const dds_qos_t* publisherQos;
+    const dds_qos_t* writerQos;
 
-    if(useQos && xml_loader != nullptr)
+    if(useQos && participantStruct->provider != NULL)
     {
-        // Get topic QoS
-        DDS::ReturnCode_t retcode = xml_loader->get_topic_qos(topicQos, ACE_TEXT(qosParam), ACE_TEXT(topicName));
-        if(retcode != DDS::RETCODE_OK)
+        dds_qos_provider_t* provider = participantStruct->provider;
+
+        dds_return_t dds_ret = dds_qos_provider_get_qos(provider, DDS_TOPIC_QOS, qosParam, &topicQos);
+        if(dds_ret != DDS_RETCODE_OK)
         {
             free(qosParam);
             return enif_make_atom(env, "topic_profile_not_found");
         }
-
-        retcode = xml_loader->get_publisher_qos(publisherQos, ACE_TEXT(qosParam));
-        if(retcode != DDS::RETCODE_OK)
+        
+        dds_ret = dds_qos_provider_get_qos(provider, DDS_PUBLISHER_QOS, qosParam, &publisherQos);
+        if(dds_ret != DDS_RETCODE_OK)
         {
             free(qosParam);
             return enif_make_atom(env, "publisher_profile_not_found");
         }
-
-        retcode = xml_loader->get_datawriter_qos(datawriterQos, ACE_TEXT(qosParam), ACE_TEXT(topicName));
-        if(retcode != DDS::RETCODE_OK)
+        
+        dds_ret = dds_qos_provider_get_qos(provider, DDS_WRITER_QOS, qosParam, &writerQos);
+        if(dds_ret != DDS_RETCODE_OK)
         {
             free(qosParam);
             return enif_make_atom(env, "datawriter_profile_not_found");
         }
     }
 
-    // create topic
-    PSMark::DeviceMessageTypeSupport_var ts =
-            new PSMark::DeviceMessageTypeSupportImpl();
-    CORBA::String_var type_name = ts->get_type_name();
-    DDS::Topic_var topic =
-        participantStruct->participant->create_topic(topicName,
-        type_name.in(),
-        topicQos,
-        0,
-        OpenDDS::DCPS::DEFAULT_STATUS_MASK);
+    // Find topic if it exists
+    dds_entity_t topic = dds_find_topic(DDS_FIND_SCOPE_PARTICIPANT, participantStruct->participant, topicName, NULL, 1);
+    
+    // Topic doesn't exist, make it
+    if(topic == 0)
+    {
+        topic = dds_create_topic(participantStruct->participant, &PSMark_DeviceMessage_desc, topicName, topicQos, NULL);
+    }
 
-    if (0 == topic) 
+    if(topic < 0)
         return enif_make_atom(env, "topic_creation_failed");
 
-    // create publisher
-    DDS::Publisher_var publisher =
-        participantStruct->participant->create_publisher(publisherQos,
-        0,
-        OpenDDS::DCPS::DEFAULT_STATUS_MASK);
-
-    if (0 == publisher) 
+    // Create the subscriber
+    dds_entity_t publisher = dds_create_publisher(participantStruct->participant, publisherQos, NULL);
+    if(publisher < 0)
         return enif_make_atom(env, "publisher_creation_failed");
 
-    // create and narrow datawriter
-    DDS::DataWriter_var writer =
-        publisher->create_datawriter(topic.in(),
-        datawriterQos,
-        DDS::DataWriterListener::_nil(),
-        OpenDDS::DCPS::DEFAULT_STATUS_MASK);
-
-    if (0 == writer) 
+    // Create the datareader
+    dds_entity_t datawriter = dds_create_reader(publisher, topic, writerQos, NULL);
+    if(datawriter < 0)
         return enif_make_atom(env, "datawriter_creation_failed");
-
-    PSMark::DeviceMessageDataWriter_var message_writer =
-        PSMark::DeviceMessageDataWriter::_narrow(writer.in());
-
-    if (0 == message_writer) 
-        return enif_make_atom(env, "datawriter_narrow_failed");
 
     res = (PublisherStruct*) enif_alloc_resource(PUBLISHER_RES_TYPE, sizeof(PublisherStruct));
     if(res == NULL) return enif_make_badarg(env);
@@ -560,8 +538,8 @@ ERL_NIF_TERM create_publisher_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_T
     ret = enif_make_resource(env, res);
     enif_release_resource(res);
 
-    res->publisher = publisher.in();
-    res->writer = message_writer.in();
+    res->publisher = publisher;
+    res->writer = datawriter;
     res->nodeId = publishingNode;
 
     return enif_make_tuple2(env, atom_ok, ret);
@@ -571,26 +549,15 @@ ERL_NIF_TERM delete_publisher(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
 {
     UNUSED_PARAM(argc);
 
-    // Get participant
+    // Get publisher
     void* voidStruct = nullptr;
-    if(!enif_get_resource(env, argv[0], PARTICIPANT_RES_TYPE, &voidStruct))
-    {
-        return enif_make_atom(env, "failed_to_fetch_participant");
-    }
-
-    ParticipantStruct* participantStruct = (ParticipantStruct*)voidStruct;
-
-    // Get subscriber
-    voidStruct = nullptr;
     if(!enif_get_resource(env, argv[1], PUBLISHER_RES_TYPE, &voidStruct))
     {
         return enif_make_atom(env, "failed_to_fetch_publisher");
     }
 
     PublisherStruct* publisherStruct = (PublisherStruct*)voidStruct;
-
-    // Remove subscriber from participant
-    if(!participantStruct->participant->delete_publisher(publisherStruct->publisher) == DDS::RETCODE_OK)
+    if(dds_delete(publisherStruct->publisher) != DDS_RETCODE_OK)
     {
         return enif_make_atom(env, "failed_to_delete_publisher");
     }
@@ -602,6 +569,31 @@ ERL_NIF_TERM delete_publisher(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[
 
     return atom_ok;
 }
+
+ERL_NIF_TERM delete_subscriber(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    UNUSED_PARAM(argc);
+
+    // Get subscriber
+    void* voidStruct = nullptr;
+    if(!enif_get_resource(env, argv[1], SUBSCRIBER_RES_TYPE, &voidStruct))
+    {
+        return enif_make_atom(env, "failed_to_fetch_subscriber");
+    }
+
+    SubscriberStruct* subscriberStruct = (SubscriberStruct*)voidStruct;
+
+    // Remove subscriber from participant
+    if(dds_delete(subscriberStruct->subscriber) != DDS_RETCODE_OK)
+    {
+        return enif_make_atom(env, "failed_to_delete_subscriber");
+    }
+
+    subscriberStruct->subscriber = 0;
+
+    return atom_ok;
+}
+
 
 ERL_NIF_TERM publish_message(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
@@ -632,17 +624,16 @@ ERL_NIF_TERM publish_message(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
 
     if(publisherStruct->publisher != 0)
     {
-        PSMark::DeviceMessage message;
+        PSMark_DeviceMessage message;
         message.seq_id = seqId;
-        message.payload.length(messageData.size);
-        for(size_t i = 0; i < messageData.size; i++)
-        {
-            message.payload[i] = messageData.data[i];
-        }
-        message.publisher_id = CORBA::string_dup(publisherStruct->nodeId);
-        
-        DDS::ReturnCode_t err = publisherStruct->writer->write(message, DDS::HANDLE_NIL);
-        if (err!=DDS::RETCODE_OK)
+        message.payload._length = messageData.size;
+        message.payload._maximum = messageData.size;
+        message.payload._buffer = dds_sequence_octet_allocbuf(messageData.size);
+        memcpy(message.payload._buffer, messageData.data, messageData.size);
+        message.publisher_id = strdup(publisherStruct->nodeId);
+
+        dds_return_t dds_ret = dds_write(publisherStruct->writer, &message);
+        if(dds_ret != DDS_RETCODE_OK)
             return enif_make_atom(env, "write_failed");
 
         return atom_ok;
@@ -662,4 +653,4 @@ static ErlNifFunc nif_funcs[] = {
     {"delete_publisher", 2, delete_publisher}
 };
 
-ERL_NIF_INIT(psmark_default_dds_interface, nif_funcs, &load, &reload, &upgrade, &unload);
+ERL_NIF_INIT(psmark_cyclonedds_interface, nif_funcs, &load, &reload, &upgrade, &unload);

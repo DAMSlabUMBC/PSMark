@@ -1,5 +1,5 @@
-#ifndef DATAREADER_LISTENER_IMPL_H
-#define DATAREADER_LISTENER_IMPL_H
+#ifndef OPENDDSDATAREADER_LISTENER_IMPL_H
+#define OPENDDSDATAREADER_LISTENER_IMPL_H
 
 #include <ace/Global_Macros.h>
 #include <dds/DdsDcpsSubscriptionS.h>
@@ -8,8 +8,8 @@
 
 #include <erl_nif.h>
 
-#include <PSMarkTypeSupportC.h>
-#include <PSMarkTypeSupportImpl.h>
+#include <OpenDDSPSMarkTypeSupportC.h>
+#include <OpenDDSPSMarkTypeSupportImpl.h>
 
 #ifdef __GNUC__
 #include <tr1/memory>
@@ -17,7 +17,7 @@
 
 typedef std::tr1::shared_ptr<PSMark::DeviceMessage> MessageType;
 
-class DataReaderListenerImpl
+class OpenDDSDataReaderListenerImpl
   : public virtual OpenDDS::DCPS::LocalObject<DDS::DataReaderListener> {
 
 
@@ -28,7 +28,7 @@ class DataReaderListenerImpl
   ERL_NIF_TERM _topicName;
 
 public:
-	DataReaderListenerImpl(ErlNifPid* listenerPid, char* clientName, char* topicName) 
+	OpenDDSDataReaderListenerImpl(ErlNifPid* listenerPid, char* clientName, char* topicName) 
     : _listenerPid(listenerPid)
     { 
       _env = enif_alloc_env(); 
@@ -65,4 +65,4 @@ public:
     const DDS::SampleLostStatus& status);
 };
 
-#endif /* DATAREADER_LISTENER_IMPL_H */
+#endif /* OPENDDSDATAREADER_LISTENER_IMPL_H */
