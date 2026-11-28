@@ -70,8 +70,9 @@ handle_call(subscribe, _From, State = #{nif_module := NifModule, participant := 
     case Subscriber of
         undefined ->
             % Create the subscriber for this client
+            {ok, QoSPath} = psmark_config_manager:fetch_dds_qos_path(),
             {ok, QoSProfile} = psmark_config_manager:fetch_dds_qos_profile(),
-            {ok, NewSubscriber} = NifModule:create_subscriber_on_topic(?DDS_TOPIC, atom_to_list(ClientName), Participant, self(), QoSProfile),
+            {ok, NewSubscriber} = NifModule:create_subscriber_on_topic(?DDS_TOPIC, atom_to_list(ClientName), Participant, self(), QoSPath, QoSProfile),
 
             % Save the fact we were subscribed to this topic for disconnections
             PrevTopics =
@@ -272,10 +273,11 @@ retrieve_or_create_participant(NifModule, DomainId, ConfigFile) ->
         undefined ->
             ok = persistent_term:put({?MODULE, participant, DomainId}, creating),
 
+            {ok, QoSPath} = psmark_config_manager:fetch_dds_qos_path(),
             {ok, QoSProfile} = psmark_config_manager:fetch_dds_qos_profile(),
 
             % Do creation and update with participant reference
-            case NifModule:create_participant(DomainId, ConfigFile, QoSProfile) of 
+            case NifModule:create_participant(DomainId, ConfigFile, QoSPath, QoSProfile) of 
                 {ok, Participant} ->
                     ok = persistent_term:put({?MODULE, participant, DomainId}, Participant),
                     {ok, Participant};
@@ -294,9 +296,10 @@ do_connect(NifModule, ClientName, Participant, Publisher, State) ->
     case Publisher of
         undefined ->
             % Create the publisher for this client
+            {ok, QoSPath} = psmark_config_manager:fetch_dds_qos_path(),
             {ok, QoSProfile} = psmark_config_manager:fetch_dds_qos_profile(),
             {ok, NodeName} = psmark_config_manager:fetch_node_name(),
-            {ok, NewPublisher} = NifModule:create_publisher_on_topic(?DDS_TOPIC, Participant, QoSProfile, atom_to_list(NodeName)),
+            {ok, NewPublisher} = NifModule:create_publisher_on_topic(?DDS_TOPIC, Participant, QoSPath, QoSProfile, atom_to_list(NodeName)),
 
             % We've connected at this point, save data
             TimeNs = erlang:system_time(nanosecond),

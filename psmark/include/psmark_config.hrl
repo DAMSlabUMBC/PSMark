@@ -71,7 +71,9 @@
 -define(DDS_NIF_FULL_PATH_PROP, nif_full_path).
 -define(DDS_CONFIG_FILE_PATH_PROP, config_file).
 -define(DDS_DOMAIN_ID_PROP, domain_id).
+-define(DDS_QOS_PATH_PROP, qos_path).
 -define(DDS_QOS_PROFILE_PROP, qos_profile).
+
 % NOTE: We do not require a qos_xml_file as DDS defines sensible defaults
 % NOTE: We do not require a nif module as we fall back to the default one
 -define(DDS_REQ_KEY_LIST, [?DDS_DOMAIN_ID_PROP]).
@@ -80,6 +82,7 @@
 -define(DDS_DEFAULT_NIF_MODULE, psmark_default_dds_interface).
 -define(DDS_DEFAULT_NIF_FULL_PATH, "priv/dds_cplusplus/lib/libpsmark_default_dds_interface").
 -define(DDS_DEFAULT_CONFIG_FILE_PATH, "configs/dds_configs/psmark_default_dds_interface.ini").
+-define(DDS_DEFAULT_PATH, ""). % Intentionally empty
 -define(DDS_DEFAULT_PROFILE, ""). % Intentionally empty
 -define(DDS_TOPIC, "PSMARK_TOPIC").
 

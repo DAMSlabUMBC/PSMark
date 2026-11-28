@@ -1,4 +1,4 @@
-add_library(psmark_cyclonedds)
+add_library(psmark_cyclonedds SHARED)
 
 include(FetchContent)
 FetchContent_Declare(

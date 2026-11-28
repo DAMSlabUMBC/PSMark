@@ -15,7 +15,7 @@
 -export([fetch_mqtt_client_module/0, fetch_mqtt_broker_information/0, fetch_mqtt_default_qos/0, fetch_mqtt_qos_for_device/1]).
 
 % DDS exports
--export([fetch_dds_nif_information/0, fetch_dds_domain_id/0, fetch_dds_config_file_path/0, fetch_dds_qos_profile/0]).
+-export([fetch_dds_nif_information/0, fetch_dds_domain_id/0, fetch_dds_config_file_path/0, fetch_dds_qos_path/0, fetch_dds_qos_profile/0]).
 
 % Metric exports
 -export([fetch_metrics_output_dir/0, fetch_python_metric_engine_path/0,
@@ -449,6 +449,9 @@ fetch_dds_domain_id() ->
 
 fetch_dds_config_file_path() ->
     fetch_protocol_property(?DDS_CONFIG_FILE_PATH_PROP, ?DDS_DEFAULT_CONFIG_FILE_PATH).
+
+fetch_dds_qos_path() ->
+    fetch_protocol_property(?DDS_QOS_PATH_PROP, ?DDS_DEFAULT_PATH).
 
 fetch_dds_qos_profile() ->
     fetch_protocol_property(?DDS_QOS_PROFILE_PROP, ?DDS_DEFAULT_PROFILE).

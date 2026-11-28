@@ -12,6 +12,7 @@
 #include "OpenDDSDataReaderListenerImpl.h"
 
 #include <string>
+#include <sstream>
 
 // Define macro to avoid compiler warnings for unused API params
 #define UNUSED_PARAM(expr) do { (void)(expr); } while (0)
@@ -169,22 +170,40 @@ ERL_NIF_TERM create_participant(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
         return enif_make_atom(env, "invalid_config_path");
     }
 
+    // Get QoS path
+    unsigned int qosPathLength = 0;
+    if(!enif_get_string_length(env, argv[2], &qosPathLength, ERL_NIF_UTF8))
+    {
+        return enif_make_atom(env, "invalid_qos_path");
+    }
+
+    bool useQos = false;
+    char* qosPath = nullptr;
+    if(qosPathLength > 0)
+    {
+        useQos = true;
+        qosPath = (char*)malloc(qosPathLength + 1);
+        if(!enif_get_string(env, argv[2], qosPath, qosPathLength + 1, ERL_NIF_UTF8))
+        {
+            free(qosPath);
+            return enif_make_atom(env, "invalid_qos_path");
+        }
+    }
+
     // Get QoS profile
-    unsigned int qosParamLength = 0;
-    if(!enif_get_string_length(env, argv[2], &qosParamLength, ERL_NIF_UTF8))
+    unsigned int qosProfileLength = 0;
+    if(!enif_get_string_length(env, argv[3], &qosProfileLength, ERL_NIF_UTF8))
     {
         return enif_make_atom(env, "invalid_qos_profile");
     }
 
-    bool useQos = false;
-    char* qosParam = nullptr;
-    if(qosParamLength > 0)
+    char* qosProfile = nullptr;
+    if(qosProfileLength > 0)
     {
-        useQos = true;
-        qosParam = (char*)malloc(qosParamLength + 1);
-        if(!enif_get_string(env, argv[2], qosParam, qosParamLength + 1, ERL_NIF_UTF8))
+        qosProfile = (char*)malloc(qosProfileLength + 1);
+        if(!enif_get_string(env, argv[3], qosProfile, qosProfileLength + 1, ERL_NIF_UTF8))
         {
-            free(qosParam);
+            free(qosProfile);
             return enif_make_atom(env, "invalid_qos_profile");
         }
     }
@@ -197,19 +216,26 @@ ERL_NIF_TERM create_participant(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
 
     if(useQos)
     {
+        // In OpenDDS, qos is loaded by appending the profile with # onto the path
+        size_t lastindex = std::string(qosPath).find_last_of("."); 
+        std::stringstream ss;
+        ss << std::string(qosPath).substr(0, lastindex) << "#" << qosProfile;
+
         xml_loader = new OpenDDS::DCPS::QOS_XML_Loader();
-        DDS::ReturnCode_t retcode = xml_loader->init(ACE_TEXT(qosParam));
+        DDS::ReturnCode_t retcode = xml_loader->init(ACE_TEXT(ss.str().c_str()));
         if(retcode != DDS::RETCODE_OK)
         {
-            free(qosParam);
+            free(qosPath);
+            free(qosProfile);
             return enif_make_atom(env, "malformed_qos");
         }
 
         // create domain participant
-        retcode = xml_loader->get_participant_qos(partQos, ACE_TEXT(qosParam));
+        retcode = xml_loader->get_participant_qos(partQos, ACE_TEXT(ss.str().c_str()));
         if(retcode != DDS::RETCODE_OK)
         {
-            free(qosParam);
+            free(qosPath);
+            free(qosProfile);
             return enif_make_atom(env, "participant_profile_not_found");
         }
     }
@@ -291,22 +317,40 @@ ERL_NIF_TERM create_subscriber_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_
         return enif_make_atom(env, "invalid_listener_pid");
     }
 
+    // Get QoS path
+    unsigned int qosPathLength = 0;
+    if(!enif_get_string_length(env, argv[4], &qosPathLength, ERL_NIF_UTF8))
+    {
+        return enif_make_atom(env, "invalid_qos_path");
+    }
+
+    bool useQos = false;
+    char* qosPath = nullptr;
+    if(qosPathLength > 0)
+    {
+        useQos = true;
+        qosPath = (char*)malloc(qosPathLength + 1);
+        if(!enif_get_string(env, argv[4], qosPath, qosPathLength + 1, ERL_NIF_UTF8))
+        {
+            free(qosPath);
+            return enif_make_atom(env, "invalid_qos_path");
+        }
+    }
+
     // Get QoS profile
-    unsigned int qosParamLength = 0;
-    if(!enif_get_string_length(env, argv[4], &qosParamLength, ERL_NIF_UTF8))
+    unsigned int qosProfileLength = 0;
+    if(!enif_get_string_length(env, argv[5], &qosProfileLength, ERL_NIF_UTF8))
     {
         return enif_make_atom(env, "invalid_qos_profile");
     }
 
-    bool useQos = false;
-    char* qosParam = nullptr;
-    if(qosParamLength > 0)
+    char* qosProfile = nullptr;
+    if(qosProfileLength > 0)
     {
-        useQos = true;
-        qosParam = (char*)malloc(qosParamLength + 1);
-        if(!enif_get_string(env, argv[4], qosParam, qosParamLength + 1, ERL_NIF_UTF8))
+        qosProfile = (char*)malloc(qosProfileLength + 1);
+        if(!enif_get_string(env, argv[5], qosProfile, qosProfileLength + 1, ERL_NIF_UTF8))
         {
-            free(qosParam);
+            free(qosProfile);
             return enif_make_atom(env, "invalid_qos_profile");
         }
     }
@@ -318,25 +362,33 @@ ERL_NIF_TERM create_subscriber_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_
 
     if(useQos && xml_loader != nullptr)
     {
+        // In OpenDDS, qos is loaded by appending the profile with # onto the path
+        size_t lastindex = std::string(qosPath).find_last_of("."); 
+        std::stringstream ss;
+        ss << std::string(qosPath).substr(0, lastindex) << "#" << qosProfile;
+
         // Get topic QoS
-        DDS::ReturnCode_t retcode = xml_loader->get_topic_qos(topicQos, ACE_TEXT(qosParam), ACE_TEXT(topicName));
+        DDS::ReturnCode_t retcode = xml_loader->get_topic_qos(topicQos, ACE_TEXT(ss.str().c_str()), ACE_TEXT(topicName));
         if(retcode != DDS::RETCODE_OK)
         {
-            free(qosParam);
+            free(qosPath);
+            free(qosProfile);
             return enif_make_atom(env, "topic_profile_not_found");
         }
 
-        retcode = xml_loader->get_subscriber_qos(subscriberQos, ACE_TEXT(qosParam));
+        retcode = xml_loader->get_subscriber_qos(subscriberQos, ACE_TEXT(ss.str().c_str()));
         if(retcode != DDS::RETCODE_OK)
         {
-            free(qosParam);
+            free(qosPath);
+            free(qosProfile);
             return enif_make_atom(env, "subscriber_profile_not_found");
         }
 
-        retcode = xml_loader->get_datareader_qos(datareaderQos, ACE_TEXT(qosParam), ACE_TEXT(topicName));
+        retcode = xml_loader->get_datareader_qos(datareaderQos, ACE_TEXT(ss.str().c_str()), ACE_TEXT(topicName));
         if(retcode != DDS::RETCODE_OK)
         {
-            free(qosParam);
+            free(qosPath);
+            free(qosProfile);
             return enif_make_atom(env, "datareader_profile_not_found");
         }
     }
@@ -451,38 +503,56 @@ ERL_NIF_TERM create_publisher_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_T
 
     ParticipantStruct* participantStruct = (ParticipantStruct*)voidStruct;
 
+    // Get QoS path
+    unsigned int qosPathLength = 0;
+    if(!enif_get_string_length(env, argv[2], &qosPathLength, ERL_NIF_UTF8))
+    {
+        return enif_make_atom(env, "invalid_qos_path");
+    }
+
+    bool useQos = false;
+    char* qosPath = nullptr;
+    if(qosPathLength > 0)
+    {
+        useQos = true;
+        qosPath = (char*)malloc(qosPathLength + 1);
+        if(!enif_get_string(env, argv[2], qosPath, qosPathLength + 1, ERL_NIF_UTF8))
+        {
+            free(qosPath);
+            return enif_make_atom(env, "invalid_qos_path");
+        }
+    }
+
     // Get QoS profile
-    unsigned int qosParamLength = 0;
-    if(!enif_get_string_length(env, argv[2], &qosParamLength, ERL_NIF_UTF8))
+    unsigned int qosProfileLength = 0;
+    if(!enif_get_string_length(env, argv[3], &qosProfileLength, ERL_NIF_UTF8))
     {
         return enif_make_atom(env, "invalid_qos_profile");
     }
 
+    char* qosProfile = nullptr;
+    if(qosProfileLength > 0)
+    {
+        qosProfile = (char*)malloc(qosProfileLength + 1);
+        if(!enif_get_string(env, argv[3], qosProfile, qosProfileLength + 1, ERL_NIF_UTF8))
+        {
+            free(qosProfile);
+            return enif_make_atom(env, "invalid_qos_profile");
+        }
+    }
+
     // Get publishing node ID
     unsigned int publishingNodeLength = 0;
-    if(!enif_get_string_length(env, argv[3], &publishingNodeLength, ERL_NIF_UTF8))
+    if(!enif_get_string_length(env, argv[4], &publishingNodeLength, ERL_NIF_UTF8))
     {
         return enif_make_atom(env, "invalid_node_id");
     }
 
     char* publishingNode = (char*)malloc(publishingNodeLength + 1);
-    if(!enif_get_string(env, argv[3], publishingNode, publishingNodeLength + 1, ERL_NIF_UTF8))
+    if(!enif_get_string(env, argv[4], publishingNode, publishingNodeLength + 1, ERL_NIF_UTF8))
     {
         free(publishingNode);
         return enif_make_atom(env, "invalid_node_id");
-    }
-
-    bool useQos = false;
-    char* qosParam = nullptr;
-    if(qosParamLength > 0)
-    {
-        useQos = true;
-        qosParam = (char*)malloc(qosParamLength + 1);
-        if(!enif_get_string(env, argv[2], qosParam, qosParamLength + 1, ERL_NIF_UTF8))
-        {
-            free(qosParam);
-            return enif_make_atom(env, "invalid_qos_profile");
-        }
     }
 
     OpenDDS::DCPS::QOS_XML_Loader* xml_loader = participantStruct->loader;
@@ -492,25 +562,33 @@ ERL_NIF_TERM create_publisher_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_T
 
     if(useQos && xml_loader != nullptr)
     {
+        // In OpenDDS, qos is loaded by appending the profile with # onto the path without the extension
+        size_t lastindex = std::string(qosPath).find_last_of("."); 
+        std::stringstream ss;
+        ss << std::string(qosPath).substr(0, lastindex) << "#" << qosProfile;
+
         // Get topic QoS
-        DDS::ReturnCode_t retcode = xml_loader->get_topic_qos(topicQos, ACE_TEXT(qosParam), ACE_TEXT(topicName));
+        DDS::ReturnCode_t retcode = xml_loader->get_topic_qos(topicQos, ACE_TEXT(ss.str().c_str()), ACE_TEXT(topicName));
         if(retcode != DDS::RETCODE_OK)
         {
-            free(qosParam);
+            free(qosPath);
+            free(qosProfile);
             return enif_make_atom(env, "topic_profile_not_found");
         }
 
-        retcode = xml_loader->get_publisher_qos(publisherQos, ACE_TEXT(qosParam));
+        retcode = xml_loader->get_publisher_qos(publisherQos, ACE_TEXT(ss.str().c_str()));
         if(retcode != DDS::RETCODE_OK)
         {
-            free(qosParam);
+            free(qosPath);
+            free(qosProfile);
             return enif_make_atom(env, "publisher_profile_not_found");
         }
 
-        retcode = xml_loader->get_datawriter_qos(datawriterQos, ACE_TEXT(qosParam), ACE_TEXT(topicName));
+        retcode = xml_loader->get_datawriter_qos(datawriterQos, ACE_TEXT(ss.str().c_str()), ACE_TEXT(topicName));
         if(retcode != DDS::RETCODE_OK)
         {
-            free(qosParam);
+            free(qosPath);
+            free(qosProfile);
             return enif_make_atom(env, "datawriter_profile_not_found");
         }
     }
@@ -654,9 +732,9 @@ ERL_NIF_TERM publish_message(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
 }
 
 static ErlNifFunc nif_funcs[] = {
-    {"create_participant", 3, create_participant},
-    {"create_subscriber_on_topic", 5, create_subscriber_on_topic},
-    {"create_publisher_on_topic", 4, create_publisher_on_topic},
+    {"create_participant", 4, create_participant},
+    {"create_subscriber_on_topic", 6, create_subscriber_on_topic},
+    {"create_publisher_on_topic", 5, create_publisher_on_topic},
     {"publish_message", 3, publish_message},
     {"delete_subscriber", 2, delete_subscriber},
     {"delete_publisher", 2, delete_publisher}

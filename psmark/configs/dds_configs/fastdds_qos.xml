@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dds xmlns="http://www.omg.org/dds"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://www.omg.org/dds dds_qos.xsd">
+     
+     <profiles>
+          <participant profile_name="PSMarkLowProfile">
+               <rtps>
+                    <useBuiltinTransports>true</useBuiltinTransports>
+                    <builtinTransports>UDPv4</builtinTransports>
+               </rtps>
+          </participant>
+
+          <data_reader profile_name="PSMarkLowProfile">
+               <qos>
+                    <durability>
+                    <kind>VOLATILE</kind>
+                    </durability>
+
+                    <reliability>
+                    <kind>BEST_EFFORT</kind>
+                    </reliability>
+               </qos>
+          </data_reader>
+          
+
+          <data_writer profile_name="PSMarkLowProfile">
+               <qos>
+                    <durability>
+                    <kind>VOLATILE</kind>
+                    </durability>
+
+                    <reliability>
+                    <kind>BEST_EFFORT</kind>
+                    </reliability>
+               </qos>
+          </data_writer>
+
+          <topic profile_name="PSMarkLowProfile">
+               <!-- No non-default QoS -->
+          </topic>
+     </profiles>
+</dds>

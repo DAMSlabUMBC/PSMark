@@ -1,4 +1,4 @@
-add_library(psmark_fastdds)
+add_library(psmark_fastdds SHARED)
 
 include(ExternalProject)
 ExternalProject_Add(FastDDS
@@ -37,4 +37,6 @@ target_sources(psmark_fastdds
             NIF/FastDDSDataReaderListenerImpl.h
 )
 
+# target_link_libraries(psmark_fastdds PRIVATE OpenDDS::Dcps OpenDDS::Rtps OpenDDS::Rtps_Udp OpenDDS::QOS_XML_XSC_Handler ${XERCES-C})
+target_link_libraries(psmark_fastdds PRIVATE fastdds)
 target_include_directories(psmark_fastdds PRIVATE ${ERTS_ROOT}/include)

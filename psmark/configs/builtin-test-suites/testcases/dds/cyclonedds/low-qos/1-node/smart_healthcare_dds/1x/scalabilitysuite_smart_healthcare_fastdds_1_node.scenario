@@ -1,0 +1,33 @@
+[
+    {name, scalabilitysuite_smart_healthcare_fastdds_1_node},
+    {duration, {1, minutes}},
+    {protocol, dds},
+    {deployment_name, smart_healthcare_1_node},
+    {hosts,
+    [
+        {runner1, 
+        [
+            {hostname, '192.168.1.212'}
+        ]}
+    ]},
+
+    {protocol_config,
+    [
+        {domain_id, 1},
+	    {nif_full_path, "/home/cbadolato/linux-github/PSMark/psmark/priv/build/lib/libpsmark_fastdds"},
+        {config_file, "/home/cbadolato/linux-github/PSMark/psmark/configs/dds_configs/psmark_default_dds_interface_1_node.ini"},
+        {qos_path, "/home/cbadolato/linux-github/PSMark/psmark/configs/dds_configs/fastdds_qos.xml"},
+        {qos_profile, "PSMarkLowProfile"}
+    ]},
+    
+    {metric_config,
+    [
+        {output_dir, "results"},
+        {metric_plugins, 
+        [
+            {psmark_throughput_calc_plugin, erlang},
+            {psmark_latency_calc_plugin, erlang},
+            {psmark_dropped_message_calc_plugin, erlang}
+        ]}
+    ]}
+].

@@ -178,28 +178,46 @@ ERL_NIF_TERM create_participant(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
         return enif_make_atom(env, "invalid_config_path");
     }
 
+    // Get QoS path
+    unsigned int qosPathLength = 0;
+    if(!enif_get_string_length(env, argv[2], &qosPathLength, ERL_NIF_UTF8))
+    {
+        return enif_make_atom(env, "invalid_qos_path");
+    }
+
+    bool useQos = false;
+    char* qosPath = nullptr;
+    if(qosPathLength > 0)
+    {
+        useQos = true;
+        qosPath = (char*)malloc(qosPathLength + 1);
+        if(!enif_get_string(env, argv[2], qosPath, qosPathLength + 1, ERL_NIF_UTF8))
+        {
+            free(qosPath);
+            return enif_make_atom(env, "invalid_qos_path");
+        }
+    }
+
     // Get QoS profile
-    unsigned int qosParamLength = 0;
-    if(!enif_get_string_length(env, argv[2], &qosParamLength, ERL_NIF_UTF8))
+    unsigned int qosProfileLength = 0;
+    if(!enif_get_string_length(env, argv[3], &qosProfileLength, ERL_NIF_UTF8))
     {
         return enif_make_atom(env, "invalid_qos_profile");
     }
 
-    bool useQos = false;
-    char* qosParam = nullptr;
-    if(qosParamLength > 0)
+    char* qosProfile = nullptr;
+    if(qosProfileLength > 0)
     {
-        useQos = true;
-        qosParam = (char*)malloc(qosParamLength + 1);
-        if(!enif_get_string(env, argv[2], qosParam, qosParamLength + 1, ERL_NIF_UTF8))
+        qosProfile = (char*)malloc(qosProfileLength + 1);
+        if(!enif_get_string(env, argv[3], qosProfile, qosProfileLength + 1, ERL_NIF_UTF8))
         {
-            free(qosParam);
+            free(qosProfile);
             return enif_make_atom(env, "invalid_qos_profile");
         }
     }
 
     // Get XML QoS
-    eprosima::fastdds::dds::ReturnCode_t retCode = eprosima::fastdds::dds::DomainParticipantFactory::get_instance()->load_XML_profiles_file(configPath);
+    eprosima::fastdds::dds::ReturnCode_t retCode = eprosima::fastdds::dds::DomainParticipantFactory::get_instance()->load_XML_profiles_file(qosPath);
     if(retCode != eprosima::fastdds::dds::RETCODE_OK)
     {
         return enif_make_atom(env, "malformed_qos");
@@ -207,7 +225,7 @@ ERL_NIF_TERM create_participant(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
 
     // Get domain participant QoS
     eprosima::fastdds::dds::DomainParticipantQos participantQoS;
-    retCode = eprosima::fastdds::dds::DomainParticipantFactory::get_instance()->get_participant_qos_from_profile(qosParam, participantQoS);
+    retCode = eprosima::fastdds::dds::DomainParticipantFactory::get_instance()->get_participant_qos_from_profile(qosProfile, participantQoS);
     if(retCode != eprosima::fastdds::dds::RETCODE_OK)
     {
         return enif_make_atom(env, "participant_profile_not_found");
@@ -221,7 +239,7 @@ ERL_NIF_TERM create_participant(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
 
     // Register type
     eprosima::fastdds::dds::TypeSupport* typeSupport = new eprosima::fastdds::dds::TypeSupport(new PSMark::DeviceMessagePubSubType());
-    typeSupport->register_type(participant, "DeviceMessage");
+    typeSupport->register_type(participant, PSMark::DeviceMessagePubSubType().get_name());
 
     res = (ParticipantStruct*) enif_alloc_resource(PARTICIPANT_RES_TYPE, sizeof(ParticipantStruct));
     if(res == NULL) return enif_make_badarg(env);
@@ -282,22 +300,40 @@ ERL_NIF_TERM create_subscriber_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_
         return enif_make_atom(env, "invalid_listener_pid");
     }
 
+    // Get QoS path
+    unsigned int qosPathLength = 0;
+    if(!enif_get_string_length(env, argv[4], &qosPathLength, ERL_NIF_UTF8))
+    {
+        return enif_make_atom(env, "invalid_qos_path");
+    }
+
+    bool useQos = false;
+    char* qosPath = nullptr;
+    if(qosPathLength > 0)
+    {
+        useQos = true;
+        qosPath = (char*)malloc(qosPathLength + 1);
+        if(!enif_get_string(env, argv[4], qosPath, qosPathLength + 1, ERL_NIF_UTF8))
+        {
+            free(qosPath);
+            return enif_make_atom(env, "invalid_qos_path");
+        }
+    }
+
     // Get QoS profile
-    unsigned int qosParamLength = 0;
-    if(!enif_get_string_length(env, argv[4], &qosParamLength, ERL_NIF_UTF8))
+    unsigned int qosProfileLength = 0;
+    if(!enif_get_string_length(env, argv[5], &qosProfileLength, ERL_NIF_UTF8))
     {
         return enif_make_atom(env, "invalid_qos_profile");
     }
 
-    bool useQos = false;
-    char* qosParam = nullptr;
-    if(qosParamLength > 0)
+    char* qosProfile = nullptr;
+    if(qosProfileLength > 0)
     {
-        useQos = true;
-        qosParam = (char*)malloc(qosParamLength + 1);
-        if(!enif_get_string(env, argv[4], qosParam, qosParamLength + 1, ERL_NIF_UTF8))
+        qosProfile = (char*)malloc(qosProfileLength + 1);
+        if(!enif_get_string(env, argv[5], qosProfile, qosProfileLength + 1, ERL_NIF_UTF8))
         {
-            free(qosParam);
+            free(qosProfile);
             return enif_make_atom(env, "invalid_qos_profile");
         }
     }
@@ -308,7 +344,7 @@ ERL_NIF_TERM create_subscriber_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_
     // Topic doesn't exist, make it
     if(topic == nullptr)
     {
-        topic = participantStruct->participant->create_topic_with_profile(topicName, PSMark::DeviceMessagePubSubType().get_name(), qosParam);
+        topic = participantStruct->participant->create_topic_with_profile(topicName, PSMark::DeviceMessagePubSubType().get_name(), qosProfile);
     }
 
     if(topic == nullptr)
@@ -317,7 +353,7 @@ ERL_NIF_TERM create_subscriber_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_
     }
     
     // Create the subscriber
-    eprosima::fastdds::dds::Subscriber* subscriber = participantStruct->participant->create_subscriber_with_profile(qosParam);
+    eprosima::fastdds::dds::Subscriber* subscriber = participantStruct->participant->create_subscriber(eprosima::fastdds::dds::SUBSCRIBER_QOS_DEFAULT);
     if(subscriber == nullptr)
     {
         return enif_make_atom(env, "subscriber_creation_failed");
@@ -325,7 +361,7 @@ ERL_NIF_TERM create_subscriber_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_
 
     // Create the datareader
     FastDDSDataReaderListenerImpl* listener = new FastDDSDataReaderListenerImpl(listenerPID, clientName, topicName, participantStruct->participant);
-    eprosima::fastdds::dds::DataReader* datareader = subscriber->create_datareader_with_profile(topic, qosParam, listener);
+    eprosima::fastdds::dds::DataReader* datareader = subscriber->create_datareader_with_profile(topic, qosProfile, listener);
     if(datareader == nullptr)
     {
         return enif_make_atom(env, "datareader_creation_failed");
@@ -375,38 +411,56 @@ ERL_NIF_TERM create_publisher_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_T
 
     ParticipantStruct* participantStruct = (ParticipantStruct*)voidStruct;
 
+    // Get QoS path
+    unsigned int qosPathLength = 0;
+    if(!enif_get_string_length(env, argv[2], &qosPathLength, ERL_NIF_UTF8))
+    {
+        return enif_make_atom(env, "invalid_qos_path");
+    }
+
+    bool useQos = false;
+    char* qosPath = nullptr;
+    if(qosPathLength > 0)
+    {
+        useQos = true;
+        qosPath = (char*)malloc(qosPathLength + 1);
+        if(!enif_get_string(env, argv[2], qosPath, qosPathLength + 1, ERL_NIF_UTF8))
+        {
+            free(qosPath);
+            return enif_make_atom(env, "invalid_qos_path");
+        }
+    }
+
     // Get QoS profile
-    unsigned int qosParamLength = 0;
-    if(!enif_get_string_length(env, argv[2], &qosParamLength, ERL_NIF_UTF8))
+    unsigned int qosProfileLength = 0;
+    if(!enif_get_string_length(env, argv[3], &qosProfileLength, ERL_NIF_UTF8))
     {
         return enif_make_atom(env, "invalid_qos_profile");
     }
 
+    char* qosProfile = nullptr;
+    if(qosProfileLength > 0)
+    {
+        qosProfile = (char*)malloc(qosProfileLength + 1);
+        if(!enif_get_string(env, argv[3], qosProfile, qosProfileLength + 1, ERL_NIF_UTF8))
+        {
+            free(qosProfile);
+            return enif_make_atom(env, "invalid_qos_profile");
+        }
+    }
+
     // Get publishing node ID
     unsigned int publishingNodeLength = 0;
-    if(!enif_get_string_length(env, argv[3], &publishingNodeLength, ERL_NIF_UTF8))
+    if(!enif_get_string_length(env, argv[4], &publishingNodeLength, ERL_NIF_UTF8))
     {
         return enif_make_atom(env, "invalid_node_id");
     }
 
     char* publishingNode = (char*)malloc(publishingNodeLength + 1);
-    if(!enif_get_string(env, argv[3], publishingNode, publishingNodeLength + 1, ERL_NIF_UTF8))
+    if(!enif_get_string(env, argv[4], publishingNode, publishingNodeLength + 1, ERL_NIF_UTF8))
     {
         free(publishingNode);
         return enif_make_atom(env, "invalid_node_id");
-    }
-
-    bool useQos = false;
-    char* qosParam = nullptr;
-    if(qosParamLength > 0)
-    {
-        useQos = true;
-        qosParam = (char*)malloc(qosParamLength + 1);
-        if(!enif_get_string(env, argv[2], qosParam, qosParamLength + 1, ERL_NIF_UTF8))
-        {
-            free(qosParam);
-            return enif_make_atom(env, "invalid_qos_profile");
-        }
     }
 
      // Find topic if it exists
@@ -415,7 +469,7 @@ ERL_NIF_TERM create_publisher_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_T
     // Topic doesn't exist, make it
     if(topic == nullptr)
     {
-       topic = participantStruct->participant->create_topic_with_profile(topicName, PSMark::DeviceMessagePubSubType().get_name(), qosParam);
+       topic = participantStruct->participant->create_topic_with_profile(topicName, PSMark::DeviceMessagePubSubType().get_name(), qosProfile);
     }
 
     if(topic == nullptr)
@@ -424,14 +478,14 @@ ERL_NIF_TERM create_publisher_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_T
     }
 
     // Create the publisher
-    eprosima::fastdds::dds::Publisher* publisher = participantStruct->participant->create_publisher_with_profile(qosParam);
+    eprosima::fastdds::dds::Publisher* publisher = participantStruct->participant->create_publisher(eprosima::fastdds::dds::PUBLISHER_QOS_DEFAULT);
     if(publisher == nullptr)
     {
         return enif_make_atom(env, "publisher_creation_failed");
     }
 
     // Create the datareader
-    eprosima::fastdds::dds::DataWriter* datawriter = publisher->create_datawriter_with_profile(topic, qosParam);
+    eprosima::fastdds::dds::DataWriter* datawriter = publisher->create_datawriter_with_profile(topic, qosProfile);
     if(datawriter == nullptr)
     {
         return enif_make_atom(env, "datawriter_creation_failed");
@@ -585,12 +639,12 @@ ERL_NIF_TERM publish_message(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
 }
 
 static ErlNifFunc nif_funcs[] = {
-    {"create_participant", 3, create_participant},
-    {"create_subscriber_on_topic", 5, create_subscriber_on_topic},
-    {"create_publisher_on_topic", 4, create_publisher_on_topic},
+    {"create_participant", 4, create_participant},
+    {"create_subscriber_on_topic", 6, create_subscriber_on_topic},
+    {"create_publisher_on_topic", 5, create_publisher_on_topic},
     {"publish_message", 3, publish_message},
     {"delete_subscriber", 2, delete_subscriber},
     {"delete_publisher", 2, delete_publisher}
 };
 
-ERL_NIF_INIT(psmark_fastdds_interface, nif_funcs, &load, &reload, &upgrade, &unload);
+ERL_NIF_INIT(psmark_default_dds_interface, nif_funcs, &load, &reload, &upgrade, &unload);

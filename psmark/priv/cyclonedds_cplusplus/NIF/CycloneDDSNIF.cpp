@@ -5,6 +5,7 @@
 #include <CycloneDDSPSMark.h>
 
 #include <string>
+#include <iostream>
 
 // Define macro to avoid compiler warnings for unused API params
 #define UNUSED_PARAM(expr) do { (void)(expr); } while (0)
@@ -149,6 +150,7 @@ static void unload(ErlNifEnv* caller_env, void* priv_data)
 static void data_available(dds_entity_t reader, void *arg)
 {
     void* samples[MAX_SAMPLES];
+    memset(samples, 0, MAX_SAMPLES);
     dds_sample_info_t info[MAX_SAMPLES];
     int status;
     ReaderListenerData* listenerData = (ReaderListenerData*)arg;
@@ -217,38 +219,57 @@ ERL_NIF_TERM create_participant(ErlNifEnv* env, int argc, const ERL_NIF_TERM arg
         return enif_make_atom(env, "invalid_config_path");
     }
 
+    // Get QoS path
+    unsigned int qosPathLength = 0;
+    if(!enif_get_string_length(env, argv[2], &qosPathLength, ERL_NIF_UTF8))
+    {
+        return enif_make_atom(env, "invalid_qos_path");
+    }
+
+    bool useQos = false;
+    char* qosPath = nullptr;
+    if(qosPathLength > 0)
+    {
+        useQos = true;
+        qosPath = (char*)malloc(qosPathLength + 1);
+        if(!enif_get_string(env, argv[2], qosPath, qosPathLength + 1, ERL_NIF_UTF8))
+        {
+            free(qosPath);
+            return enif_make_atom(env, "invalid_qos_path");
+        }
+    }
+
     // Get QoS profile
-    unsigned int qosParamLength = 0;
-    if(!enif_get_string_length(env, argv[2], &qosParamLength, ERL_NIF_UTF8))
+    unsigned int qosProfileLength = 0;
+    if(!enif_get_string_length(env, argv[3], &qosProfileLength, ERL_NIF_UTF8))
     {
         return enif_make_atom(env, "invalid_qos_profile");
     }
 
-    bool useQos = false;
-    char* qosParam = nullptr;
-    if(qosParamLength > 0)
+    char* qosProfile = nullptr;
+    if(qosProfileLength > 0)
     {
-        useQos = true;
-        qosParam = (char*)malloc(qosParamLength + 1);
-        if(!enif_get_string(env, argv[2], qosParam, qosParamLength + 1, ERL_NIF_UTF8))
+        qosProfile = (char*)malloc(qosProfileLength + 1);
+        if(!enif_get_string(env, argv[3], qosProfile, qosProfileLength + 1, ERL_NIF_UTF8))
         {
-            free(qosParam);
+            free(qosProfile);
             return enif_make_atom(env, "invalid_qos_profile");
         }
     }
 
     // Get XML Provider
     dds_qos_provider_t *provider;
-    dds_return_t dds_ret = dds_create_qos_provider(configPath, &provider);
+    dds_return_t dds_ret = dds_create_qos_provider(qosPath, &provider);
     if (dds_ret != DDS_RETCODE_OK) 
         return enif_make_atom(env, "malformed_qos");
 
     // Get domain participant QoS
     const dds_qos_t* participantQos;
-    dds_ret = dds_qos_provider_get_qos(provider, DDS_PARTICIPANT_QOS, qosParam, &participantQos);
+    dds_ret = dds_qos_provider_get_qos(provider, DDS_PARTICIPANT_QOS, qosProfile, &participantQos);
     if(dds_ret != DDS_RETCODE_OK)
     {
-        free(qosParam);
+        free(qosPath);
+        free(qosProfile);
         return enif_make_atom(env, "participant_profile_not_found");
     }
 
@@ -318,22 +339,40 @@ ERL_NIF_TERM create_subscriber_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_
         return enif_make_atom(env, "invalid_listener_pid");
     }
 
+    // Get QoS path
+    unsigned int qosPathLength = 0;
+    if(!enif_get_string_length(env, argv[4], &qosPathLength, ERL_NIF_UTF8))
+    {
+        return enif_make_atom(env, "invalid_qos_path");
+    }
+
+    bool useQos = false;
+    char* qosPath = nullptr;
+    if(qosPathLength > 0)
+    {
+        useQos = true;
+        qosPath = (char*)malloc(qosPathLength + 1);
+        if(!enif_get_string(env, argv[4], qosPath, qosPathLength + 1, ERL_NIF_UTF8))
+        {
+            free(qosPath);
+            return enif_make_atom(env, "invalid_qos_path");
+        }
+    }
+
     // Get QoS profile
-    unsigned int qosParamLength = 0;
-    if(!enif_get_string_length(env, argv[4], &qosParamLength, ERL_NIF_UTF8))
+    unsigned int qosProfileLength = 0;
+    if(!enif_get_string_length(env, argv[5], &qosProfileLength, ERL_NIF_UTF8))
     {
         return enif_make_atom(env, "invalid_qos_profile");
     }
 
-    bool useQos = false;
-    char* qosParam = nullptr;
-    if(qosParamLength > 0)
+    char* qosProfile = nullptr;
+    if(qosProfileLength > 0)
     {
-        useQos = true;
-        qosParam = (char*)malloc(qosParamLength + 1);
-        if(!enif_get_string(env, argv[4], qosParam, qosParamLength + 1, ERL_NIF_UTF8))
+        qosProfile = (char*)malloc(qosProfileLength + 1);
+        if(!enif_get_string(env, argv[5], qosProfile, qosProfileLength + 1, ERL_NIF_UTF8))
         {
-            free(qosParam);
+            free(qosProfile);
             return enif_make_atom(env, "invalid_qos_profile");
         }
     }
@@ -347,24 +386,27 @@ ERL_NIF_TERM create_subscriber_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_
     {
         dds_qos_provider_t* provider = participantStruct->provider;
 
-        dds_return_t dds_ret = dds_qos_provider_get_qos(provider, DDS_TOPIC_QOS, qosParam, &topicQos);
+        dds_return_t dds_ret = dds_qos_provider_get_qos(provider, DDS_TOPIC_QOS, qosProfile, &topicQos);
         if(dds_ret != DDS_RETCODE_OK)
         {
-            free(qosParam);
+            free(qosPath);
+            free(qosProfile);
             return enif_make_atom(env, "topic_profile_not_found");
         }
         
-        dds_ret = dds_qos_provider_get_qos(provider, DDS_SUBSCRIBER_QOS, qosParam, &subscriberQos);
+        dds_ret = dds_qos_provider_get_qos(provider, DDS_SUBSCRIBER_QOS, qosProfile, &subscriberQos);
         if(dds_ret != DDS_RETCODE_OK)
         {
-            free(qosParam);
+            free(qosPath);
+            free(qosProfile);
             return enif_make_atom(env, "subscriber_profile_not_found");
         }
         
-        dds_ret = dds_qos_provider_get_qos(provider, DDS_READER_QOS, qosParam, &readerQos);
+        dds_ret = dds_qos_provider_get_qos(provider, DDS_READER_QOS, qosProfile, &readerQos);
         if(dds_ret != DDS_RETCODE_OK)
         {
-            free(qosParam);
+            free(qosPath);
+            free(qosProfile);
             return enif_make_atom(env, "datareader_profile_not_found");
         }
     }
@@ -373,7 +415,7 @@ ERL_NIF_TERM create_subscriber_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_
     dds_entity_t topic = dds_find_topic(DDS_FIND_SCOPE_PARTICIPANT, participantStruct->participant, topicName, NULL, 1);
     
     // Topic doesn't exist, make it
-    if(topic == 0)
+    if(topic < 0)
     {
         topic = dds_create_topic(participantStruct->participant, &PSMark_DeviceMessage_desc, topicName, topicQos, NULL);
     }
@@ -445,38 +487,56 @@ ERL_NIF_TERM create_publisher_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_T
 
     ParticipantStruct* participantStruct = (ParticipantStruct*)voidStruct;
 
+    // Get QoS path
+    unsigned int qosPathLength = 0;
+    if(!enif_get_string_length(env, argv[2], &qosPathLength, ERL_NIF_UTF8))
+    {
+        return enif_make_atom(env, "invalid_qos_path");
+    }
+
+    bool useQos = false;
+    char* qosPath = nullptr;
+    if(qosPathLength > 0)
+    {
+        useQos = true;
+        qosPath = (char*)malloc(qosPathLength + 1);
+        if(!enif_get_string(env, argv[2], qosPath, qosPathLength + 1, ERL_NIF_UTF8))
+        {
+            free(qosPath);
+            return enif_make_atom(env, "invalid_qos_path");
+        }
+    }
+
     // Get QoS profile
-    unsigned int qosParamLength = 0;
-    if(!enif_get_string_length(env, argv[2], &qosParamLength, ERL_NIF_UTF8))
+    unsigned int qosProfileLength = 0;
+    if(!enif_get_string_length(env, argv[3], &qosProfileLength, ERL_NIF_UTF8))
     {
         return enif_make_atom(env, "invalid_qos_profile");
     }
 
+    char* qosProfile = nullptr;
+    if(qosProfileLength > 0)
+    {
+        qosProfile = (char*)malloc(qosProfileLength + 1);
+        if(!enif_get_string(env, argv[3], qosProfile, qosProfileLength + 1, ERL_NIF_UTF8))
+        {
+            free(qosProfile);
+            return enif_make_atom(env, "invalid_qos_profile");
+        }
+    }
+
     // Get publishing node ID
     unsigned int publishingNodeLength = 0;
-    if(!enif_get_string_length(env, argv[3], &publishingNodeLength, ERL_NIF_UTF8))
+    if(!enif_get_string_length(env, argv[4], &publishingNodeLength, ERL_NIF_UTF8))
     {
         return enif_make_atom(env, "invalid_node_id");
     }
 
     char* publishingNode = (char*)malloc(publishingNodeLength + 1);
-    if(!enif_get_string(env, argv[3], publishingNode, publishingNodeLength + 1, ERL_NIF_UTF8))
+    if(!enif_get_string(env, argv[4], publishingNode, publishingNodeLength + 1, ERL_NIF_UTF8))
     {
         free(publishingNode);
         return enif_make_atom(env, "invalid_node_id");
-    }
-
-    bool useQos = false;
-    char* qosParam = nullptr;
-    if(qosParamLength > 0)
-    {
-        useQos = true;
-        qosParam = (char*)malloc(qosParamLength + 1);
-        if(!enif_get_string(env, argv[2], qosParam, qosParamLength + 1, ERL_NIF_UTF8))
-        {
-            free(qosParam);
-            return enif_make_atom(env, "invalid_qos_profile");
-        }
     }
 
      // Get required QoS
@@ -488,24 +548,27 @@ ERL_NIF_TERM create_publisher_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_T
     {
         dds_qos_provider_t* provider = participantStruct->provider;
 
-        dds_return_t dds_ret = dds_qos_provider_get_qos(provider, DDS_TOPIC_QOS, qosParam, &topicQos);
+        dds_return_t dds_ret = dds_qos_provider_get_qos(provider, DDS_TOPIC_QOS, qosProfile, &topicQos);
         if(dds_ret != DDS_RETCODE_OK)
         {
-            free(qosParam);
+            free(qosPath);
+            free(qosProfile);
             return enif_make_atom(env, "topic_profile_not_found");
         }
         
-        dds_ret = dds_qos_provider_get_qos(provider, DDS_PUBLISHER_QOS, qosParam, &publisherQos);
+        dds_ret = dds_qos_provider_get_qos(provider, DDS_PUBLISHER_QOS, qosProfile, &publisherQos);
         if(dds_ret != DDS_RETCODE_OK)
         {
-            free(qosParam);
+            free(qosPath);
+            free(qosProfile);
             return enif_make_atom(env, "publisher_profile_not_found");
         }
         
-        dds_ret = dds_qos_provider_get_qos(provider, DDS_WRITER_QOS, qosParam, &writerQos);
+        dds_ret = dds_qos_provider_get_qos(provider, DDS_WRITER_QOS, qosProfile, &writerQos);
         if(dds_ret != DDS_RETCODE_OK)
         {
-            free(qosParam);
+            free(qosPath);
+            free(qosProfile);
             return enif_make_atom(env, "datawriter_profile_not_found");
         }
     }
@@ -514,7 +577,7 @@ ERL_NIF_TERM create_publisher_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_T
     dds_entity_t topic = dds_find_topic(DDS_FIND_SCOPE_PARTICIPANT, participantStruct->participant, topicName, NULL, 1);
     
     // Topic doesn't exist, make it
-    if(topic == 0)
+    if(topic < 0)
     {
         topic = dds_create_topic(participantStruct->participant, &PSMark_DeviceMessage_desc, topicName, topicQos, NULL);
     }
@@ -528,7 +591,7 @@ ERL_NIF_TERM create_publisher_on_topic(ErlNifEnv* env, int argc, const ERL_NIF_T
         return enif_make_atom(env, "publisher_creation_failed");
 
     // Create the datareader
-    dds_entity_t datawriter = dds_create_reader(publisher, topic, writerQos, NULL);
+    dds_entity_t datawriter = dds_create_writer(publisher, topic, writerQos, NULL);
     if(datawriter < 0)
         return enif_make_atom(env, "datawriter_creation_failed");
 
@@ -645,12 +708,12 @@ ERL_NIF_TERM publish_message(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]
 }
 
 static ErlNifFunc nif_funcs[] = {
-    {"create_participant", 3, create_participant},
-    {"create_subscriber_on_topic", 5, create_subscriber_on_topic},
-    {"create_publisher_on_topic", 4, create_publisher_on_topic},
+    {"create_participant", 4, create_participant},
+    {"create_subscriber_on_topic", 6, create_subscriber_on_topic},
+    {"create_publisher_on_topic", 5, create_publisher_on_topic},
     {"publish_message", 3, publish_message},
     {"delete_subscriber", 2, delete_subscriber},
     {"delete_publisher", 2, delete_publisher}
 };
 
-ERL_NIF_INIT(psmark_cyclonedds_interface, nif_funcs, &load, &reload, &upgrade, &unload);
+ERL_NIF_INIT(psmark_default_dds_interface, nif_funcs, &load, &reload, &upgrade, &unload);
